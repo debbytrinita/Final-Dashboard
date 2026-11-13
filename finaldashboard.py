@@ -322,7 +322,7 @@ SB = {
 # (id, label, emoji, target tab or None if page not built yet)
 NAV_ITEMS = [
     ("nav-overview", "Data Overview", "📊", "overview"),
-    ("nav-eda", "Exploratory Data Analysis", "🔍", None),
+    ("nav-eda", "Exploratory Data Analysis", "🔍", "eda"),
     ("nav-single", "Prediksi Single Observasi", "👤", "predict"),
     ("nav-multi", "Prediksi Multi Observasi", "🗂️", "multi"),
     ("nav-team", "Tim Developer", "👥", "team")
@@ -957,6 +957,58 @@ def result_card(m):
     )
 
 
+# ============================================================
+# 5b. EXPLORATORY DATA ANALYSIS PAGE
+# ============================================================
+
+tab_eda = html.Div([
+    html.Div(
+        children=[
+            html.H3("Exploratory Data Analysis", style={"margin": "0 0 4px"}),
+            html.P(
+                "Analisis karakteristik pelanggan dan pola churn berdasarkan data aktual "
+                "customer_churn.csv (2023–2025).",
+                style={"color": C["muted"], "marginTop": 0}
+            )
+        ],
+        style={**CARD, "marginBottom": "12px"}
+    ),
+
+    html.Div(
+        id="eda-kpi-row",
+        style={
+            "display": "flex",
+            "gap": "12px",
+            "marginBottom": "12px",
+            "flexWrap": "wrap"
+        }
+    ),
+
+    html.Div(
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+            "gap": "12px"
+        },
+        children=[
+            html.Div(dcc.Graph(id="eda-churn"), style=CARD),
+            html.Div(dcc.Graph(id="eda-contract"), style=CARD),
+            html.Div(dcc.Graph(id="eda-region"), style=CARD),
+            html.Div(dcc.Graph(id="eda-segment"), style=CARD),
+            html.Div(dcc.Graph(id="eda-tenure"), style=CARD),
+            html.Div(dcc.Graph(id="eda-charges"), style=CARD),
+            html.Div(dcc.Graph(id="eda-support"), style=CARD),
+            html.Div(dcc.Graph(id="eda-trend"), style=CARD)
+        ]
+    ),
+
+    html.Div(
+        id="eda-insight",
+        style={**CARD, "marginTop": "12px"}
+    )
+])
+
+
 tab_predict = html.Div(
     style={"display": "flex", "flexDirection": "column", "gap": "12px"},
     children=[
@@ -1310,6 +1362,7 @@ tab_team = html.Div(
 
 PAGES = {
     "overview": tab_overview,
+    "eda": tab_eda,
     "predict": tab_predict,
     "multi": tab_multi,
     "team": tab_team
@@ -1642,6 +1695,289 @@ def update_overview(region, segment, kontrak, risk, tenure):
     ]
 
     return kpis, fig, info, profile, stats
+
+
+# ============================================================
+# 9b. CALLBACK: EXPLORATORY DATA ANALYSIS
+# ============================================================
+
+@callback(
+    Output("eda-kpi-row", "children"),
+    Output("eda-churn", "figure"),
+    Output("eda-contract", "figure"),
+    Output("eda-region", "figure"),
+    Output("eda-segment", "figure"),
+    Output("eda-tenure", "figure"),
+    Output("eda-charges", "figure"),
+    Output("eda-support", "figure"),
+    Output("eda-trend", "figure"),
+    Output("eda-insight", "children"),
+    Input("f-region", "value"),
+    Input("f-segment", "value"),
+    Input("f-kontrak", "value"),
+    Input("f-tenure", "value")
+)
+def update_eda(region, segment, kontrak, tenure):
+    d = DF.copy()
+
+    if region:
+        d = d[d["region"].isin(region)]
+    if segment:
+        d = d[d["segment"].isin(segment)]
+    if kontrak:
+        d = d[d["contract_type"].isin(kontrak)]
+    if tenure and len(tenure) == 2:
+        d = d[d["tenure_months"].between(tenure[0], tenure[1])]
+
+    d = d.copy()
+    d["status_aktual"] = d["churn"].map({
+        0: "Bertahan",
+        1: "Churn"
+    })
+
+    if d.empty:
+        empty_fig = px.scatter(
+            title="Tidak ada data — silakan ubah filter",
+            template="plotly_white"
+        )
+        return (
+            [kpi("Pelanggan", "0")],
+            empty_fig, empty_fig, empty_fig, empty_fig,
+            empty_fig, empty_fig, empty_fig, empty_fig,
+            html.P("Tidak ada data untuk kombinasi filter yang dipilih.")
+        )
+
+    churn_rate = d["churn"].mean()
+    churn_count = int(d["churn"].sum())
+    avg_tenure = d["tenure_months"].mean()
+    avg_monthly = d["monthly_charges"].mean()
+
+    kpis = [
+        kpi("Total pelanggan", f"{len(d):,}", "data aktual"),
+        kpi("Pelanggan churn", f"{churn_count:,}", f"{churn_rate:.1%} dari pelanggan"),
+        kpi("Pelanggan bertahan", f"{len(d) - churn_count:,}", f"{1 - churn_rate:.1%} dari pelanggan"),
+        kpi("Rata-rata tenure", f"{avg_tenure:.1f} bulan", "lama berlangganan"),
+        kpi("Rata-rata tagihan", rupiah(avg_monthly), "per bulan")
+    ]
+
+    churn_counts = (
+        d["status_aktual"].value_counts()
+        .reindex(["Bertahan", "Churn"], fill_value=0)
+        .rename_axis("status")
+        .reset_index(name="jumlah")
+    )
+    g_churn = px.pie(
+        churn_counts,
+        names="status",
+        values="jumlah",
+        hole=0.55,
+        color="status",
+        color_discrete_map={"Bertahan": "#55A868", "Churn": "#C44E52"},
+        title="Komposisi churn aktual"
+    )
+    g_churn.update_traces(textinfo="percent+label")
+    g_churn.update_layout(showlegend=False)
+
+    contract_data = (
+        d.groupby(["contract_type", "status_aktual"])
+        .size()
+        .reset_index(name="jumlah")
+    )
+    contract_data["proporsi"] = (
+        contract_data["jumlah"]
+        / contract_data.groupby("contract_type")["jumlah"].transform("sum")
+    )
+    g_contract = px.bar(
+        contract_data,
+        x="contract_type",
+        y="proporsi",
+        color="status_aktual",
+        barmode="stack",
+        text=contract_data["proporsi"].map(lambda x: f"{x:.0%}"),
+        color_discrete_map={"Bertahan": "#55A868", "Churn": "#C44E52"},
+        title="Proporsi churn berdasarkan jenis kontrak",
+        labels={
+            "contract_type": "Jenis kontrak",
+            "proporsi": "Proporsi pelanggan",
+            "status_aktual": "Status aktual"
+        },
+        template="plotly_white"
+    )
+    g_contract.update_yaxes(tickformat=".0%", range=[0, 1])
+    g_contract.update_traces(textposition="inside")
+
+    region_data = (
+        d.groupby("region", as_index=False)
+        .agg(churn_rate=("churn", "mean"), jumlah=("customer_id", "count"))
+        .sort_values("churn_rate", ascending=True)
+    )
+    g_region = px.bar(
+        region_data,
+        x="churn_rate",
+        y="region",
+        orientation="h",
+        text=region_data["churn_rate"].map(lambda x: f"{x:.1%}"),
+        title="Churn rate berdasarkan region",
+        labels={"churn_rate": "Churn rate aktual", "region": ""},
+        color_discrete_sequence=["#C44E52"],
+        template="plotly_white",
+        hover_data={"jumlah": True, "churn_rate": ":.1%"}
+    )
+    g_region.update_xaxes(tickformat=".0%")
+
+    segment_data = (
+        d.groupby("segment", as_index=False)
+        .agg(churn_rate=("churn", "mean"), jumlah=("customer_id", "count"))
+        .sort_values("churn_rate", ascending=False)
+    )
+    g_segment = px.bar(
+        segment_data,
+        x="segment",
+        y="churn_rate",
+        text=segment_data["churn_rate"].map(lambda x: f"{x:.1%}"),
+        title="Churn rate berdasarkan segmen pelanggan",
+        labels={"segment": "Segmen", "churn_rate": "Churn rate aktual"},
+        color_discrete_sequence=["#2F5DA8"],
+        template="plotly_white",
+        hover_data={"jumlah": True, "churn_rate": ":.1%"}
+    )
+    g_segment.update_yaxes(tickformat=".0%")
+
+    g_tenure = px.box(
+        d,
+        x="status_aktual",
+        y="tenure_months",
+        color="status_aktual",
+        category_orders={"status_aktual": ["Bertahan", "Churn"]},
+        color_discrete_map={"Bertahan": "#55A868", "Churn": "#C44E52"},
+        title="Distribusi tenure berdasarkan status churn",
+        labels={"status_aktual": "Status aktual", "tenure_months": "Tenure (bulan)"},
+        template="plotly_white"
+    )
+    g_tenure.update_layout(showlegend=False)
+
+    g_charges = px.box(
+        d,
+        x="status_aktual",
+        y="monthly_charges",
+        color="status_aktual",
+        category_orders={"status_aktual": ["Bertahan", "Churn"]},
+        color_discrete_map={"Bertahan": "#55A868", "Churn": "#C44E52"},
+        title="Distribusi tagihan bulanan berdasarkan status churn",
+        labels={"status_aktual": "Status aktual", "monthly_charges": "Tagihan bulanan (Rp)"},
+        template="plotly_white"
+    )
+    g_charges.update_layout(showlegend=False)
+    g_charges.update_yaxes(tickprefix="Rp", separatethousands=True)
+
+    support_data = (
+        d.groupby("status_aktual")
+        .agg(
+            rata_keluhan=("num_complaints", "mean"),
+            rata_panggilan=("support_calls", "mean")
+        )
+        .reindex(["Bertahan", "Churn"])
+        .reset_index()
+        .melt(
+            id_vars="status_aktual",
+            var_name="indikator",
+            value_name="rata_rata"
+        )
+    )
+    support_data["indikator"] = support_data["indikator"].map({
+        "rata_keluhan": "Jumlah keluhan",
+        "rata_panggilan": "Panggilan customer service"
+    })
+    g_support = px.bar(
+        support_data,
+        x="status_aktual",
+        y="rata_rata",
+        color="indikator",
+        barmode="group",
+        title="Keluhan dan panggilan CS menurut status churn",
+        labels={
+            "status_aktual": "Status aktual",
+            "rata_rata": "Rata-rata",
+            "indikator": "Indikator"
+        },
+        template="plotly_white"
+    )
+
+    trend_data = d.copy()
+    trend_data["bulan_signup"] = (
+        pd.to_datetime(trend_data["signup_date"])
+        .dt.to_period("M")
+        .astype(str)
+    )
+    trend_data = (
+        trend_data.groupby("bulan_signup", as_index=False)
+        .agg(
+            churn_rate=("churn", "mean"),
+            jumlah_pelanggan=("customer_id", "count")
+        )
+        .sort_values("bulan_signup")
+    )
+    g_trend = px.line(
+        trend_data,
+        x="bulan_signup",
+        y="churn_rate",
+        markers=True,
+        title="Tren churn aktual berdasarkan bulan pendaftaran",
+        labels={
+            "bulan_signup": "Bulan pendaftaran",
+            "churn_rate": "Churn rate aktual"
+        },
+        template="plotly_white",
+        hover_data={"jumlah_pelanggan": True, "churn_rate": ":.1%"}
+    )
+    g_trend.update_yaxes(tickformat=".0%")
+
+    highest_region = region_data.sort_values("churn_rate", ascending=False).iloc[0]
+    highest_segment = segment_data.iloc[0]
+    contract_churn = (
+        d.groupby("contract_type")["churn"].mean().sort_values(ascending=False)
+    )
+    highest_contract = contract_churn.index[0]
+
+    insight = html.Div([
+        html.H4("Ringkasan temuan pada data terfilter", style={"marginTop": 0}),
+        html.Ul([
+            html.Li(
+                f"Churn rate aktual pada subset ini adalah {churn_rate:.1%} "
+                f"({churn_count:,} dari {len(d):,} pelanggan)."
+            ),
+            html.Li(
+                f"Region dengan churn rate tertinggi adalah {highest_region['region']} "
+                f"({highest_region['churn_rate']:.1%}; {int(highest_region['jumlah'])} pelanggan)."
+            ),
+            html.Li(
+                f"Segmen dengan churn rate tertinggi adalah {highest_segment['segment']} "
+                f"({highest_segment['churn_rate']:.1%})."
+            ),
+            html.Li(
+                f"Jenis kontrak dengan churn rate tertinggi pada subset ini adalah "
+                f"{highest_contract} ({contract_churn.iloc[0]:.1%})."
+            )
+        ]),
+        html.Small(
+            "Catatan: temuan ini bersifat deskriptif dan menunjukkan pola pada data, "
+            "bukan bukti hubungan sebab-akibat.",
+            style={"color": C["muted"]}
+        )
+    ])
+
+    return (
+        kpis,
+        g_churn,
+        g_contract,
+        g_region,
+        g_segment,
+        g_tenure,
+        g_charges,
+        g_support,
+        g_trend,
+        insight
+    )
 
 
 # ============================================================

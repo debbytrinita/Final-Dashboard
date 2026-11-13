@@ -27,3 +27,38 @@
 .stepper button:hover { background: #E3E6EE; }
 
 .primary-btn:hover { filter: brightness(1.1); }
+
+/* Chart pop-out (see chart_modal.js) */
+.dash-graph { position: relative; }
+.dash-graph .js-plotly-plot .main-svg { cursor: zoom-in; }
+.dash-graph .js-plotly-plot .legend,
+.dash-graph .js-plotly-plot .modebar { cursor: pointer; }
+
+.chart-expand-btn {
+  position: absolute; top: 6px; left: 6px; z-index: 5;
+  width: 28px; height: 28px; border: 0; border-radius: 6px;
+  background: rgba(47, 93, 168, .9); color: white; font-size: 16px; line-height: 1;
+  cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+.dash-graph:hover .chart-expand-btn { opacity: 1; }
+
+.chart-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(15, 23, 42, .55); padding: 4vh 4vw;
+}
+.chart-modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+.chart-modal {
+  background: white; border-radius: 12px; width: 100%; max-width: 1400px; height: 100%;
+  display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0, 0, 0, .3);
+}
+.chart-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid #E5E7EB;
+}
+.chart-modal-title { font-size: 16px; font-weight: 600; color: #1F2A44; }
+.chart-modal-close {
+  border: 0; background: #F0F2F6; border-radius: 8px; width: 34px; height: 34px;
+  font-size: 16px; cursor: pointer;
+}
+.chart-modal-close:hover { background: #E3E6EE; }
+.chart-modal-body { flex: 1; min-height: 0; padding: 8px; }

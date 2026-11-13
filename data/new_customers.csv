@@ -1,0 +1,201 @@
+customer_id,region,segment,contract_type,payment_method,internet_service,tenure_months,monthly_charges,total_charges,num_complaints,support_calls
+NEW-0001,Sumatera,Retail,Bulanan,Kartu Kredit,Mobile Broadband,29,287000.0,8127000.0,1,2
+NEW-0002,Jawa,Retail,Bulanan,Kartu Kredit,Fiber,25,514000.0,13167000.0,0,1
+NEW-0003,Jawa,UMKM,Tahunan,Transfer Bank,Mobile Broadband,41,424000.0,17330000.0,3,5
+NEW-0004,Jawa,Retail,Bulanan,E-Wallet,Fiber,9,415000.0,3905000.0,0,3
+NEW-0005,Sulawesi,Retail,Tahunan,E-Wallet,Fiber,23,404000.0,9292000.0,1,1
+NEW-0006,Sumatera,UMKM,Tahunan,Transfer Bank,Fiber,16,502000.0,8029000.0,0,2
+NEW-0007,Jawa,Retail,Tahunan,Transfer Bank,Fiber,8,557000.0,4512000.0,0,1
+NEW-0008,Jawa,Retail,Dua Tahun,Transfer Bank,Mobile Broadband,55,290000.0,15680000.0,0,3
+NEW-0009,Jawa,Retail,Bulanan,Virtual Account,DSL,22,302000.0,6765000.0,3,4
+NEW-0010,Bali-Nusa Tenggara,Retail,Bulanan,Transfer Bank,Fiber,5,456000.0,2277000.0,1,2
+NEW-0011,Kalimantan,Retail,Bulanan,E-Wallet,Fiber,29,385000.0,10673000.0,1,2
+NEW-0012,Sumatera,Retail,Bulanan,Transfer Bank,Fiber,13,449000.0,6359000.0,0,4
+NEW-0013,Kalimantan,Korporat,Tahunan,Virtual Account,Fiber,47,672000.0,30285000.0,1,5
+NEW-0014,Bali-Nusa Tenggara,UMKM,Bulanan,Kartu Kredit,Mobile Broadband,13,365000.0,4940000.0,2,4
+NEW-0015,Jawa,Retail,Bulanan,Transfer Bank,DSL,24,361000.0,8396000.0,1,2
+NEW-0016,Sumatera,Retail,Bulanan,E-Wallet,Fiber,10,369000.0,3808000.0,1,1
+NEW-0017,Bali-Nusa Tenggara,Retail,Bulanan,E-Wallet,Fiber,11,403000.0,4511000.0,2,6
+NEW-0018,Jawa,Korporat,Bulanan,E-Wallet,Mobile Broadband,1,855000.0,868000.0,1,1
+NEW-0019,Sumatera,Retail,Tahunan,Transfer Bank,DSL,34,264000.0,8846000.0,3,2
+NEW-0020,Kalimantan,Retail,Bulanan,Transfer Bank,Mobile Broadband,12,279000.0,3431000.0,2,3
+NEW-0021,Bali-Nusa Tenggara,Korporat,Bulanan,Virtual Account,DSL,19,520000.0,9912000.0,3,2
+NEW-0022,Sumatera,Retail,Bulanan,Kartu Kredit,Fiber,18,502000.0,9550000.0,2,4
+NEW-0023,Bali-Nusa Tenggara,Retail,Bulanan,Virtual Account,DSL,29,247000.0,7372000.0,0,1
+NEW-0024,Sulawesi,Retail,Tahunan,Virtual Account,Fiber,40,450000.0,17747000.0,1,4
+NEW-0025,Jawa,Retail,Bulanan,E-Wallet,DSL,29,265000.0,7266000.0,1,2
+NEW-0026,Sumatera,Retail,Tahunan,Kartu Kredit,Mobile Broadband,46,335000.0,15538000.0,2,3
+NEW-0027,Bali-Nusa Tenggara,Retail,Bulanan,Virtual Account,Fiber,18,458000.0,8023000.0,2,1
+NEW-0028,Jawa,UMKM,Bulanan,E-Wallet,Mobile Broadband,32,330000.0,10560000.0,0,2
+NEW-0029,Sumatera,UMKM,Tahunan,Kartu Kredit,Fiber,13,454000.0,6143000.0,1,0
+NEW-0030,Sulawesi,Retail,Dua Tahun,Kartu Kredit,Fiber,14,370000.0,4983000.0,3,3
+NEW-0031,Jawa,Retail,Tahunan,Kartu Kredit,Mobile Broadband,27,314000.0,8712000.0,2,5
+NEW-0032,Jawa,UMKM,Bulanan,Kartu Kredit,Mobile Broadband,14,281000.0,3922000.0,1,3
+NEW-0033,Sulawesi,Retail,Tahunan,Kartu Kredit,Fiber,32,361000.0,11979000.0,0,2
+NEW-0034,Sulawesi,Retail,Tahunan,Kartu Kredit,Fiber,37,454000.0,16672000.0,0,0
+NEW-0035,Jawa,Korporat,Bulanan,E-Wallet,Fiber,12,844000.0,10058000.0,0,2
+NEW-0036,Bali-Nusa Tenggara,Retail,Tahunan,Virtual Account,Fiber,55,438000.0,24742000.0,3,5
+NEW-0037,Jawa,Retail,Tahunan,Transfer Bank,Mobile Broadband,34,312000.0,11227000.0,1,5
+NEW-0038,Kalimantan,Retail,Bulanan,Kartu Kredit,Fiber,12,426000.0,5225000.0,2,3
+NEW-0039,Sumatera,Retail,Bulanan,E-Wallet,Fiber,24,373000.0,9212000.0,1,1
+NEW-0040,Jawa,Retail,Bulanan,Transfer Bank,Mobile Broadband,31,312000.0,9326000.0,2,5
+NEW-0041,Jawa,Korporat,Bulanan,Transfer Bank,DSL,7,725000.0,5007000.0,5,7
+NEW-0042,Kalimantan,UMKM,Bulanan,E-Wallet,Fiber,26,482000.0,12051000.0,1,7
+NEW-0043,Bali-Nusa Tenggara,UMKM,Bulanan,E-Wallet,DSL,12,386000.0,4517000.0,2,3
+NEW-0044,Jawa,Retail,Bulanan,E-Wallet,Fiber,19,448000.0,8317000.0,0,2
+NEW-0045,Jawa,Korporat,Dua Tahun,Transfer Bank,Fiber,36,835000.0,28352000.0,3,3
+NEW-0046,Bali-Nusa Tenggara,Retail,Bulanan,Kartu Kredit,DSL,27,165000.0,4567000.0,5,9
+NEW-0047,Kalimantan,UMKM,Bulanan,Kartu Kredit,Fiber,6,537000.0,3090000.0,0,1
+NEW-0048,Sumatera,Korporat,Tahunan,Kartu Kredit,Mobile Broadband,15,622000.0,9869000.0,1,3
+NEW-0049,Jawa,Retail,Tahunan,Transfer Bank,DSL,27,288000.0,7613000.0,2,2
+NEW-0050,Jawa,Retail,Tahunan,E-Wallet,Fiber,30,540000.0,16774000.0,0,1
+NEW-0051,Kalimantan,Korporat,Dua Tahun,E-Wallet,Mobile Broadband,43,785000.0,32997000.0,3,2
+NEW-0052,Jawa,Retail,Tahunan,E-Wallet,Fiber,49,432000.0,21859000.0,1,3
+NEW-0053,Sumatera,Retail,Tahunan,Kartu Kredit,Mobile Broadband,37,336000.0,11848000.0,2,2
+NEW-0054,Jawa,UMKM,Tahunan,E-Wallet,Fiber,59,608000.0,35295000.0,0,0
+NEW-0055,Jawa,Korporat,Bulanan,Virtual Account,Mobile Broadband,35,721000.0,24899000.0,0,3
+NEW-0056,Sulawesi,UMKM,Dua Tahun,Kartu Kredit,DSL,65,297000.0,19457000.0,3,3
+NEW-0057,Sumatera,Retail,Bulanan,Transfer Bank,Mobile Broadband,11,345000.0,3844000.0,2,5
+NEW-0058,Sulawesi,Korporat,Bulanan,Virtual Account,DSL,20,692000.0,13710000.0,0,0
+NEW-0059,Sulawesi,Retail,Tahunan,Virtual Account,DSL,35,290000.0,10209000.0,2,4
+NEW-0060,Sulawesi,Retail,Dua Tahun,E-Wallet,Fiber,26,479000.0,12033000.0,0,2
+NEW-0061,Sulawesi,Retail,Tahunan,Virtual Account,Fiber,57,317000.0,17458000.0,0,2
+NEW-0062,Sulawesi,Korporat,Dua Tahun,Transfer Bank,DSL,18,488000.0,8476000.0,0,2
+NEW-0063,Jawa,Retail,Tahunan,Virtual Account,DSL,46,248000.0,10930000.0,1,7
+NEW-0064,Jawa,UMKM,Tahunan,Transfer Bank,Mobile Broadband,45,411000.0,18777000.0,3,3
+NEW-0065,Jawa,Retail,Dua Tahun,Virtual Account,DSL,59,230000.0,13081000.0,0,2
+NEW-0066,Jawa,Retail,Bulanan,E-Wallet,Fiber,19,504000.0,9576000.0,1,5
+NEW-0067,Sulawesi,UMKM,Bulanan,Virtual Account,Mobile Broadband,27,398000.0,10415000.0,2,4
+NEW-0068,Sulawesi,Retail,Bulanan,E-Wallet,Mobile Broadband,21,315000.0,6298000.0,0,0
+NEW-0069,Kalimantan,Retail,Tahunan,Kartu Kredit,DSL,32,283000.0,9784000.0,0,1
+NEW-0070,Jawa,Retail,Bulanan,Transfer Bank,Mobile Broadband,11,247000.0,2748000.0,1,5
+NEW-0071,Jawa,Retail,Bulanan,Transfer Bank,Fiber,32,349000.0,11095000.0,2,3
+NEW-0072,Kalimantan,Retail,Bulanan,Virtual Account,DSL,11,204000.0,2168000.0,3,2
+NEW-0073,Jawa,Retail,Dua Tahun,Transfer Bank,Mobile Broadband,61,322000.0,19141000.0,0,2
+NEW-0074,Jawa,Korporat,Bulanan,E-Wallet,Fiber,13,1095000.0,14227000.0,0,2
+NEW-0075,Sumatera,Korporat,Dua Tahun,Transfer Bank,Mobile Broadband,44,748000.0,31521000.0,1,0
+NEW-0076,Bali-Nusa Tenggara,Retail,Dua Tahun,Transfer Bank,Fiber,40,439000.0,17673000.0,0,3
+NEW-0077,Jawa,Retail,Tahunan,Virtual Account,DSL,57,289000.0,16131000.0,1,0
+NEW-0078,Sumatera,Retail,Dua Tahun,Virtual Account,Mobile Broadband,65,372000.0,23432000.0,0,1
+NEW-0079,Jawa,UMKM,Tahunan,Transfer Bank,DSL,17,328000.0,5280000.0,1,0
+NEW-0080,Sulawesi,Retail,Bulanan,Virtual Account,Fiber,32,435000.0,14082000.0,1,4
+NEW-0081,Sumatera,Retail,Bulanan,Transfer Bank,Fiber,27,470000.0,12271000.0,0,1
+NEW-0082,Jawa,UMKM,Tahunan,Transfer Bank,Fiber,7,642000.0,4273000.0,0,2
+NEW-0083,Sumatera,Korporat,Dua Tahun,E-Wallet,Fiber,37,905000.0,33800000.0,0,1
+NEW-0084,Kalimantan,UMKM,Bulanan,Transfer Bank,Fiber,17,637000.0,10858000.0,1,0
+NEW-0085,Jawa,Retail,Tahunan,Kartu Kredit,Mobile Broadband,42,281000.0,11404000.0,1,3
+NEW-0086,Jawa,UMKM,Tahunan,Virtual Account,Fiber,47,601000.0,28247000.0,2,2
+NEW-0087,Jawa,Korporat,Bulanan,E-Wallet,Fiber,15,1013000.0,15112000.0,2,1
+NEW-0088,Sulawesi,Korporat,Tahunan,Transfer Bank,DSL,54,496000.0,26784000.0,1,0
+NEW-0089,Sumatera,Retail,Bulanan,Virtual Account,Fiber,4,457000.0,1786000.0,2,3
+NEW-0090,Kalimantan,Retail,Bulanan,Transfer Bank,DSL,14,281000.0,3808000.0,0,2
+NEW-0091,Jawa,UMKM,Bulanan,Transfer Bank,Mobile Broadband,24,361000.0,8865000.0,1,0
+NEW-0092,Jawa,Korporat,Dua Tahun,E-Wallet,Mobile Broadband,52,526000.0,27762000.0,0,2
+NEW-0093,Jawa,Korporat,Bulanan,Kartu Kredit,DSL,13,611000.0,7943000.0,0,2
+NEW-0094,Jawa,UMKM,Dua Tahun,Virtual Account,Fiber,18,402000.0,7159000.0,1,2
+NEW-0095,Bali-Nusa Tenggara,Retail,Bulanan,Transfer Bank,DSL,2,285000.0,596000.0,1,2
+NEW-0096,Jawa,Retail,Bulanan,E-Wallet,Mobile Broadband,16,353000.0,5534000.0,0,4
+NEW-0097,Sumatera,Retail,Dua Tahun,E-Wallet,Fiber,12,426000.0,5012000.0,1,0
+NEW-0098,Jawa,Retail,Tahunan,E-Wallet,Fiber,8,292000.0,2408000.0,1,8
+NEW-0099,Jawa,Retail,Bulanan,Transfer Bank,DSL,20,282000.0,5755000.0,2,5
+NEW-0100,Sulawesi,UMKM,Dua Tahun,Kartu Kredit,DSL,58,340000.0,20364000.0,1,4
+NEW-0101,Jawa,Retail,Bulanan,E-Wallet,Fiber,35,371000.0,12942000.0,1,3
+NEW-0102,Sumatera,Korporat,Bulanan,Virtual Account,Fiber,10,887000.0,8825000.0,1,5
+NEW-0103,Jawa,Korporat,Bulanan,Kartu Kredit,DSL,18,562000.0,10098000.0,1,6
+NEW-0104,Bali-Nusa Tenggara,Retail,Bulanan,Transfer Bank,Mobile Broadband,26,295000.0,7632000.0,1,2
+NEW-0105,Jawa,Retail,Bulanan,Kartu Kredit,Fiber,24,402000.0,10314000.0,3,3
+NEW-0106,Jawa,Korporat,Dua Tahun,Transfer Bank,Fiber,52,809000.0,41007000.0,3,4
+NEW-0107,Jawa,Retail,Tahunan,E-Wallet,DSL,9,259000.0,2262000.0,1,1
+NEW-0108,Jawa,UMKM,Bulanan,Kartu Kredit,Mobile Broadband,1,411000.0,420000.0,0,3
+NEW-0109,Jawa,UMKM,Bulanan,E-Wallet,Fiber,7,559000.0,4113000.0,0,3
+NEW-0110,Bali-Nusa Tenggara,Retail,Dua Tahun,Virtual Account,Fiber,53,311000.0,16474000.0,0,2
+NEW-0111,Jawa,Retail,Dua Tahun,Virtual Account,Mobile Broadband,38,293000.0,11658000.0,1,3
+NEW-0112,Jawa,UMKM,Dua Tahun,Transfer Bank,DSL,48,319000.0,15518000.0,1,3
+NEW-0113,Bali-Nusa Tenggara,Retail,Bulanan,Kartu Kredit,Fiber,15,423000.0,6016000.0,2,2
+NEW-0114,Kalimantan,UMKM,Dua Tahun,E-Wallet,DSL,56,350000.0,19222000.0,1,2
+NEW-0115,Sumatera,Retail,Bulanan,Kartu Kredit,DSL,15,170000.0,2579000.0,1,2
+NEW-0116,Kalimantan,UMKM,Dua Tahun,Virtual Account,Mobile Broadband,40,445000.0,18256000.0,0,5
+NEW-0117,Jawa,Retail,Bulanan,E-Wallet,Fiber,15,407000.0,6424000.0,1,7
+NEW-0118,Sumatera,Retail,Tahunan,Transfer Bank,Mobile Broadband,48,259000.0,12582000.0,0,2
+NEW-0119,Sulawesi,UMKM,Bulanan,Virtual Account,Mobile Broadband,2,521000.0,1018000.0,4,3
+NEW-0120,Jawa,Retail,Bulanan,E-Wallet,Fiber,4,375000.0,1542000.0,1,4
+NEW-0121,Jawa,UMKM,Bulanan,Virtual Account,Mobile Broadband,21,415000.0,8545000.0,2,3
+NEW-0122,Jawa,Retail,Tahunan,Transfer Bank,DSL,38,291000.0,10964000.0,0,0
+NEW-0123,Kalimantan,Retail,Tahunan,Transfer Bank,Mobile Broadband,35,351000.0,12315000.0,2,6
+NEW-0124,Jawa,Retail,Bulanan,Virtual Account,Mobile Broadband,10,330000.0,3245000.0,1,2
+NEW-0125,Sulawesi,Retail,Tahunan,Virtual Account,Fiber,59,473000.0,27525000.0,0,0
+NEW-0126,Jawa,Retail,Dua Tahun,E-Wallet,DSL,41,230000.0,9168000.0,0,1
+NEW-0127,Jawa,UMKM,Dua Tahun,Virtual Account,Mobile Broadband,37,325000.0,12045000.0,1,1
+NEW-0128,Bali-Nusa Tenggara,Korporat,Tahunan,Virtual Account,Fiber,35,907000.0,32719000.0,0,1
+NEW-0129,Jawa,Retail,Tahunan,E-Wallet,Fiber,59,412000.0,25028000.0,3,4
+NEW-0130,Sumatera,Retail,Tahunan,E-Wallet,DSL,20,221000.0,4419000.0,3,5
+NEW-0131,Sumatera,Retail,Bulanan,Kartu Kredit,Fiber,2,395000.0,783000.0,0,1
+NEW-0132,Jawa,Retail,Tahunan,E-Wallet,DSL,31,322000.0,9950000.0,2,5
+NEW-0133,Bali-Nusa Tenggara,UMKM,Bulanan,Transfer Bank,Fiber,17,505000.0,8319000.0,1,2
+NEW-0134,Kalimantan,Retail,Bulanan,E-Wallet,DSL,20,275000.0,5547000.0,2,2
+NEW-0135,Jawa,Retail,Bulanan,E-Wallet,Mobile Broadband,19,290000.0,5379000.0,1,7
+NEW-0136,Kalimantan,UMKM,Bulanan,Transfer Bank,Fiber,20,575000.0,11913000.0,0,0
+NEW-0137,Bali-Nusa Tenggara,Retail,Tahunan,Kartu Kredit,Fiber,42,462000.0,18131000.0,2,3
+NEW-0138,Jawa,Retail,Dua Tahun,E-Wallet,Fiber,69,348000.0,23494000.0,1,1
+NEW-0139,Bali-Nusa Tenggara,Retail,Bulanan,Virtual Account,Fiber,9,394000.0,3434000.0,0,0
+NEW-0140,Jawa,Retail,Bulanan,E-Wallet,Mobile Broadband,23,329000.0,7841000.0,2,5
+NEW-0141,Jawa,UMKM,Bulanan,Kartu Kredit,Fiber,25,458000.0,11404000.0,1,2
+NEW-0142,Sulawesi,UMKM,Tahunan,Virtual Account,Fiber,39,689000.0,25815000.0,0,0
+NEW-0143,Jawa,Retail,Bulanan,Transfer Bank,Fiber,26,360000.0,9739000.0,0,2
+NEW-0144,Sumatera,UMKM,Bulanan,Transfer Bank,Fiber,23,594000.0,14448000.0,1,3
+NEW-0145,Sulawesi,Retail,Bulanan,Transfer Bank,Fiber,30,421000.0,11838000.0,2,2
+NEW-0146,Sumatera,Retail,Tahunan,E-Wallet,Fiber,13,505000.0,6694000.0,0,2
+NEW-0147,Jawa,Retail,Dua Tahun,Transfer Bank,DSL,62,351000.0,20632000.0,1,0
+NEW-0148,Jawa,Retail,Tahunan,E-Wallet,DSL,40,338000.0,13456000.0,1,3
+NEW-0149,Bali-Nusa Tenggara,UMKM,Bulanan,Transfer Bank,Fiber,16,574000.0,9166000.0,3,2
+NEW-0150,Sulawesi,UMKM,Tahunan,Kartu Kredit,Mobile Broadband,25,334000.0,8459000.0,1,0
+NEW-0151,Jawa,UMKM,Tahunan,Kartu Kredit,Fiber,13,659000.0,8424000.0,0,1
+NEW-0152,Sumatera,Korporat,Dua Tahun,Kartu Kredit,Fiber,35,998000.0,34726000.0,0,1
+NEW-0153,Sumatera,Korporat,Tahunan,E-Wallet,Fiber,59,812000.0,48556000.0,2,4
+NEW-0154,Bali-Nusa Tenggara,UMKM,Dua Tahun,E-Wallet,DSL,13,318000.0,4161000.0,4,6
+NEW-0155,Sumatera,Retail,Dua Tahun,Virtual Account,Mobile Broadband,62,255000.0,15909000.0,1,3
+NEW-0156,Jawa,UMKM,Dua Tahun,E-Wallet,Fiber,42,541000.0,23239000.0,2,5
+NEW-0157,Jawa,Retail,Bulanan,E-Wallet,Mobile Broadband,24,343000.0,8317000.0,2,4
+NEW-0158,Sumatera,Retail,Bulanan,E-Wallet,Fiber,14,318000.0,4309000.0,0,2
+NEW-0159,Jawa,UMKM,Dua Tahun,Kartu Kredit,Fiber,62,680000.0,40289000.0,2,6
+NEW-0160,Jawa,UMKM,Bulanan,E-Wallet,DSL,23,422000.0,10018000.0,0,1
+NEW-0161,Jawa,Retail,Bulanan,E-Wallet,Fiber,7,359000.0,2638000.0,0,1
+NEW-0162,Jawa,UMKM,Dua Tahun,Transfer Bank,Fiber,22,622000.0,14117000.0,0,0
+NEW-0163,Sulawesi,Retail,Tahunan,Transfer Bank,DSL,14,261000.0,3708000.0,2,1
+NEW-0164,Sumatera,Retail,Dua Tahun,E-Wallet,Fiber,62,429000.0,26719000.0,1,1
+NEW-0165,Jawa,Retail,Tahunan,Kartu Kredit,DSL,20,256000.0,5161000.0,2,2
+NEW-0166,Sumatera,Retail,Bulanan,Kartu Kredit,Fiber,22,536000.0,12139000.0,2,3
+NEW-0167,Jawa,Retail,Bulanan,Transfer Bank,Fiber,7,453000.0,3065000.0,4,3
+NEW-0168,Sulawesi,Retail,Bulanan,Virtual Account,DSL,22,302000.0,6664000.0,0,4
+NEW-0169,Jawa,UMKM,Dua Tahun,Virtual Account,DSL,49,373000.0,19407000.0,0,3
+NEW-0170,Jawa,UMKM,Tahunan,Kartu Kredit,Fiber,56,568000.0,30394000.0,3,2
+NEW-0171,Jawa,UMKM,Bulanan,Virtual Account,Mobile Broadband,19,457000.0,8414000.0,0,3
+NEW-0172,Sumatera,Retail,Tahunan,Virtual Account,Fiber,20,543000.0,10455000.0,2,3
+NEW-0173,Sumatera,Retail,Bulanan,E-Wallet,Fiber,7,558000.0,3834000.0,0,2
+NEW-0174,Sulawesi,UMKM,Bulanan,Transfer Bank,DSL,35,385000.0,13440000.0,3,4
+NEW-0175,Sumatera,Korporat,Bulanan,Transfer Bank,Fiber,18,841000.0,15364000.0,0,0
+NEW-0176,Bali-Nusa Tenggara,UMKM,Tahunan,Virtual Account,Fiber,35,561000.0,19748000.0,2,1
+NEW-0177,Jawa,Retail,Dua Tahun,E-Wallet,Fiber,40,377000.0,14671000.0,0,4
+NEW-0178,Sulawesi,Retail,Dua Tahun,Kartu Kredit,Mobile Broadband,52,347000.0,18582000.0,4,2
+NEW-0179,Jawa,Retail,Tahunan,Transfer Bank,Fiber,53,323000.0,17203000.0,1,1
+NEW-0180,Sumatera,UMKM,Tahunan,Virtual Account,Mobile Broadband,43,435000.0,18851000.0,3,3
+NEW-0181,Bali-Nusa Tenggara,UMKM,Tahunan,Transfer Bank,Mobile Broadband,49,359000.0,17476000.0,1,2
+NEW-0182,Jawa,Retail,Bulanan,Transfer Bank,DSL,31,257000.0,7798000.0,1,4
+NEW-0183,Kalimantan,UMKM,Bulanan,Transfer Bank,Fiber,14,619000.0,8453000.0,1,2
+NEW-0184,Bali-Nusa Tenggara,Korporat,Tahunan,Virtual Account,Fiber,32,918000.0,29065000.0,0,1
+NEW-0185,Jawa,UMKM,Tahunan,E-Wallet,DSL,58,401000.0,23272000.0,0,1
+NEW-0186,Sulawesi,Retail,Dua Tahun,Transfer Bank,DSL,14,294000.0,4171000.0,0,2
+NEW-0187,Jawa,Retail,Tahunan,Transfer Bank,DSL,33,228000.0,7685000.0,0,1
+NEW-0188,Jawa,UMKM,Tahunan,E-Wallet,Fiber,52,521000.0,26629000.0,1,2
+NEW-0189,Sumatera,Retail,Tahunan,Virtual Account,Fiber,13,373000.0,4834000.0,1,1
+NEW-0190,Sulawesi,Retail,Bulanan,Transfer Bank,Fiber,8,519000.0,4016000.0,1,3
+NEW-0191,Jawa,Korporat,Bulanan,Transfer Bank,DSL,19,346000.0,6637000.0,0,3
+NEW-0192,Jawa,Retail,Dua Tahun,Virtual Account,Fiber,36,380000.0,13292000.0,2,4
+NEW-0193,Sulawesi,UMKM,Bulanan,Virtual Account,Fiber,10,483000.0,4849000.0,1,2
+NEW-0194,Jawa,Retail,Tahunan,Virtual Account,Fiber,10,370000.0,3632000.0,0,1
+NEW-0195,Jawa,UMKM,Tahunan,Transfer Bank,Mobile Broadband,9,441000.0,3968000.0,2,4
+NEW-0196,Jawa,Korporat,Dua Tahun,E-Wallet,Fiber,18,901000.0,15893000.0,1,4
+NEW-0197,Jawa,Retail,Bulanan,Transfer Bank,Mobile Broadband,3,299000.0,877000.0,2,2
+NEW-0198,Jawa,Retail,Dua Tahun,Transfer Bank,DSL,14,252000.0,3560000.0,2,2
+NEW-0199,Sumatera,Retail,Bulanan,Kartu Kredit,Fiber,15,441000.0,6560000.0,0,1
+NEW-0200,Sumatera,UMKM,Tahunan,Virtual Account,DSL,53,306000.0,16548000.0,2,1

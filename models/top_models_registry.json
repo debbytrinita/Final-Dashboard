@@ -1,0 +1,97 @@
+{
+  "ranking_metric": "CV roc_auc (5-fold stratified)",
+  "split": {
+    "test_size": 0.2,
+    "stratify": "churn",
+    "random_state": 42,
+    "n_train": 2400,
+    "n_test": 600
+  },
+  "metrics_threshold": 0.5,
+  "models": [
+    {
+      "rank": 1,
+      "key": "logreg",
+      "name": "Logistic Regression",
+      "family": "Logistic Regression",
+      "oversampling": null,
+      "description": "Model linear; koefisiennya mudah dijelaskan ke tim bisnis.",
+      "algorithm": "LogisticRegression (scikit-learn Pipeline)",
+      "file": "churn_model_logreg.joblib",
+      "holdout_metrics": {
+        "accuracy": 0.7217,
+        "precision": 0.6215,
+        "recall": 0.5238,
+        "f1": 0.5685,
+        "roc_auc": 0.7956
+      },
+      "cv_metrics": {
+        "accuracy": 0.733,
+        "precision": 0.6318,
+        "recall": 0.5649,
+        "f1": 0.5962,
+        "roc_auc": 0.7998
+      },
+      "cv_roc_auc": {
+        "mean": 0.7998,
+        "std": 0.0134
+      }
+    },
+    {
+      "rank": 2,
+      "key": "logreg_ros",
+      "name": "Logistic Regression + Oversampling",
+      "family": "Logistic Regression",
+      "oversampling": "RandomOverSampler",
+      "description": "Model linear; koefisiennya mudah dijelaskan ke tim bisnis.",
+      "algorithm": "LogisticRegression (scikit-learn Pipeline) + RandomOverSampler (imblearn)",
+      "file": "churn_model_logreg_ros.joblib",
+      "holdout_metrics": {
+        "accuracy": 0.7067,
+        "precision": 0.5634,
+        "recall": 0.719,
+        "f1": 0.6318,
+        "roc_auc": 0.7943
+      },
+      "cv_metrics": {
+        "accuracy": 0.7163,
+        "precision": 0.5695,
+        "recall": 0.7758,
+        "f1": 0.6564,
+        "roc_auc": 0.799
+      },
+      "cv_roc_auc": {
+        "mean": 0.799,
+        "std": 0.0134
+      }
+    },
+    {
+      "rank": 3,
+      "key": "gradient_boosting",
+      "name": "Gradient Boosting",
+      "family": "Gradient Boosting",
+      "oversampling": null,
+      "description": "Model final asli dari fasilitator (churn_model.joblib).",
+      "algorithm": "GradientBoostingClassifier (scikit-learn Pipeline)",
+      "file": "churn_model.joblib",
+      "holdout_metrics": {
+        "accuracy": 0.7183,
+        "precision": 0.6073,
+        "recall": 0.5524,
+        "f1": 0.5786,
+        "roc_auc": 0.7887
+      },
+      "cv_metrics": {
+        "accuracy": 0.7243,
+        "precision": 0.6188,
+        "recall": 0.5524,
+        "f1": 0.5832,
+        "roc_auc": 0.7923
+      },
+      "cv_roc_auc": {
+        "mean": 0.7923,
+        "std": 0.0115
+      }
+    }
+  ]
+}

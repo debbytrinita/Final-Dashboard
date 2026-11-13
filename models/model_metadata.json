@@ -1,0 +1,104 @@
+{
+  "model_name": "Customer Churn Classifier",
+  "model_version": "1.0.0",
+  "algorithm": "GradientBoostingClassifier (scikit-learn Pipeline)",
+  "sklearn_version": "1.9.1",
+  "numeric_features": [
+    "tenure_months",
+    "monthly_charges",
+    "total_charges",
+    "num_complaints",
+    "support_calls"
+  ],
+  "categorical_features": [
+    "region",
+    "segment",
+    "contract_type",
+    "payment_method",
+    "internet_service"
+  ],
+  "feature_order": [
+    "tenure_months",
+    "monthly_charges",
+    "total_charges",
+    "num_complaints",
+    "support_calls",
+    "region",
+    "segment",
+    "contract_type",
+    "payment_method",
+    "internet_service"
+  ],
+  "categories": {
+    "region": [
+      "Bali-Nusa Tenggara",
+      "Jawa",
+      "Kalimantan",
+      "Sulawesi",
+      "Sumatera"
+    ],
+    "segment": [
+      "Korporat",
+      "Retail",
+      "UMKM"
+    ],
+    "contract_type": [
+      "Bulanan",
+      "Dua Tahun",
+      "Tahunan"
+    ],
+    "payment_method": [
+      "E-Wallet",
+      "Kartu Kredit",
+      "Transfer Bank",
+      "Virtual Account"
+    ],
+    "internet_service": [
+      "DSL",
+      "Fiber",
+      "Mobile Broadband"
+    ]
+  },
+  "numeric_ranges": {
+    "tenure_months": [
+      1.0,
+      71.0
+    ],
+    "monthly_charges": [
+      160000.0,
+      1353000.0
+    ],
+    "total_charges": [
+      214000.0,
+      59536000.0
+    ],
+    "num_complaints": [
+      0.0,
+      7.0
+    ],
+    "support_calls": [
+      0.0,
+      13.0
+    ]
+  },
+  "decision_threshold": 0.5,
+  "risk_bins": {
+    "Rendah": [
+      0.0,
+      0.3
+    ],
+    "Sedang": [
+      0.3,
+      0.6
+    ],
+    "Tinggi": [
+      0.6,
+      1.0
+    ]
+  },
+  "holdout_metrics": {
+    "roc_auc": 0.7887,
+    "accuracy": 0.7183,
+    "f1": 0.5786
+  }
+}

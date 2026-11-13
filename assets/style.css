@@ -1,0 +1,56 @@
+body { margin: 0; background: #F5F7FB; }
+
+/* Tabs */
+.tab-parent { margin-bottom: 0; }
+.tab-container, .tab-parent > div { border: 0 !important; }
+.custom-tabs { border: 0 !important; }
+.custom-tab {
+  background: #EAEDF5 !important;
+  border: 0 !important;
+  border-top: 2px solid transparent !important;
+  border-radius: 0 !important;
+  padding: 14px 10px !important;
+  text-align: center;
+  font-size: 14px;
+  color: #1F2A44 !important;
+}
+.custom-tab--selected {
+  background: #fff !important;
+  border-top: 2px solid #7B3FC4 !important;
+}
+.tab-content { background: transparent; }
+
+/* Dropdowns */
+.Select-control, .dash-dropdown, .dash-dropdown-trigger {
+  border-radius: 6px !important;
+  border-color: #D5D9E2 !important;
+  background: #F0F2F6 !important;
+  font-size: 14px;
+}
+.Select-placeholder, .Select--single > .Select-control .Select-value { color: #31333F !important; }
+
+/* Checkboxes & slider accent */
+input[type="checkbox"] { accent-color: #7B3FC4; margin-right: 6px; }
+.rc-slider-track { background-color: #7B3FC4 !important; }
+.rc-slider-handle { border-color: #7B3FC4 !important; background: #7B3FC4 !important; }
+.rc-slider-handle:active, .rc-slider-handle:focus { box-shadow: 0 0 0 5px rgba(123,63,196,.2) !important; }
+.dash-slider-track, .dash-slider-range { background: #7B3FC4 !important; }
+.dash-slider-thumb { border-color: #7B3FC4 !important; background: #7B3FC4 !important; }
+
+/* Stepper numeric input */
+.stepper {
+  display: flex; align-items: stretch;
+  background: #F0F2F6; border: 1px solid #D5D9E2; border-radius: 6px; overflow: hidden;
+}
+.stepper input {
+  flex: 1; min-width: 0; width: 100%; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; background: transparent; padding: 8px 6px; text-align: center;
+  font-size: 14px; color: #31333F; outline: none; -moz-appearance: textfield;
+}
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper button {
+  border: 0; background: transparent; width: 32px; font-size: 16px; cursor: pointer; color: #31333F;
+}
+.stepper button:hover { background: #E3E6EE; }
+
+.primary-btn:hover { filter: brightness(1.1); }

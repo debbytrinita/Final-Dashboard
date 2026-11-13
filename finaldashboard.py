@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from dash.exceptions import PreventUpdate
 # 1. PATHS AND MODEL
 # ============================================================
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[0]
 sys.path.append(str(ROOT))
 
 from utils.model_utils import (
@@ -60,6 +61,22 @@ RISK_COLOR = {
 
 CATS = META["categories"]
 
+# Top 3 models (ranked by CV ROC-AUC) for the single-observation page
+_REGISTRY = json.loads(
+    (ROOT / "models" / "top_models_registry.json").read_text(encoding="utf-8")
+)
+
+TOP_MODELS = [
+    {
+        "rank": m["rank"],
+        "key": m["key"],
+        "name": m["name"],
+        "cv_auc": m["cv_roc_auc"]["mean"],
+        "model": load_model(ROOT / "models" / m["file"])
+    }
+    for m in _REGISTRY["models"]
+]
+
 
 # ============================================================
 # 3. STYLE AND HELPER FUNCTIONS
@@ -85,8 +102,9 @@ def label(t):
     return html.Label(
         t,
         style={
-            "fontWeight": 600,
-            "fontSize": "13px"
+            "fontSize": "12px",
+            "display": "block",
+            "margin": "0 0 4px"
         }
     )
 
@@ -125,17 +143,31 @@ def rupiah(x):
     return f"Rp{x:,.0f}".replace(",", ".")
 
 
+STEPPERS = [
+    ("p-tenure", 1, 72, 1),
+    ("p-monthly", 100000, 2000000, 10000),
+    ("p-complaints", 0, 10, 1),
+    ("p-calls", 0, 15, 1)
+]
+
+
 def num_input(id_, lab, val, mn, mx, step=1):
     return html.Div([
         label(lab),
-        dcc.Input(
-            id=id_,
-            type="number",
-            value=val,
-            min=mn,
-            max=mx,
-            step=step,
-            style={"width": "100%"}
+        html.Div(
+            className="stepper",
+            children=[
+                html.Button("−", id=f"{id_}-minus", n_clicks=0),
+                dcc.Input(
+                    id=id_,
+                    type="number",
+                    value=val,
+                    min=mn,
+                    max=mx,
+                    step=step
+                ),
+                html.Button("+", id=f"{id_}-plus", n_clicks=0)
+            ]
         )
     ])
 
@@ -163,7 +195,7 @@ SB = {
     "active": "rgba(255,255,255,.15)"
 }
 
-# (id, label, emoji, target tab or None if page not built yet)
+# (id, label, emoji, target page or None if page not built yet)
 NAV_ITEMS = [
     ("nav-overview", "Data Overview", "📊", "overview"),
     ("nav-eda", "Exploratory Data Analysis", "🔍", None),
@@ -210,7 +242,6 @@ sidebar = html.Div(
         "boxShadow": "0 1px 3px rgba(0,0,0,.2)"
     },
     children=[
-        # Header: title + hamburger
         html.Div(
             style={
                 "display": "flex",
@@ -244,9 +275,7 @@ sidebar = html.Div(
             ]
         ),
 
-        # Collapsible body
         html.Div(id="sb-body", children=[
-            # Navigation
             html.Div(
                 id="sb-nav",
                 children=[
@@ -264,11 +293,7 @@ sidebar = html.Div(
 
             html.Div(
                 "FILTER DATA",
-                style={
-                    "fontSize": "11px",
-                    "letterSpacing": ".08em",
-                    "color": SB["muted"]
-                }
+                style={"fontSize": "11px", "letterSpacing": ".08em", "color": SB["muted"]}
             ),
 
             sb_label("Region"),
@@ -292,8 +317,9 @@ sidebar = html.Div(
             sb_label("Jenis kontrak"),
             dcc.Checklist(
                 id="f-kontrak",
-                options=CATS["contract_type"],
-                value=CATS["contract_type"]
+                options=["Bulanan", "Dua Tahun", "Tahunan"],
+                value=["Bulanan", "Dua Tahun", "Tahunan"],
+                labelStyle={"display": "block", "fontSize": "14px", "margin": "4px 0"}
             ),
 
             sb_label("Kategori risiko (prediksi)"),
@@ -302,23 +328,18 @@ sidebar = html.Div(
                 options=RISK_ORDER,
                 value=RISK_ORDER,
                 inline=True,
-                labelStyle={"marginRight": "10px"}
+                labelStyle={"marginRight": "12px", "fontSize": "14px"}
             ),
 
             sb_label("Tenure (bulan)"),
             dcc.RangeSlider(
-            id="f-tenure",
-            min=1,
-            max=72,
-            value=[1, 72],
-            step=1,
-            marks={
-                1: "1",
-                24: "24",
-                48: "48",
-                72: "72"
-            }
-        ),
+                id="f-tenure",
+                min=1,
+                max=72,
+                value=[1, 72],
+                step=1,
+                marks={1: "1", 24: "24", 48: "48", 72: "72"}
+            ),
 
             html.Hr(style={"borderColor": "rgba(255,255,255,.2)"}),
 
@@ -441,26 +462,364 @@ tab_overview = html.Div([
 # 6. PREDICTION TAB
 # ============================================================
 
-tab_predict = html.Div(
-    style={
-        "display": "grid",
-        "gridTemplateColumns": "1fr 1fr",
-        "gap": "12px"
-    },
+# ------------------------------------------------------------
+# Insight: how each factor affects churn, per model
+# ------------------------------------------------------------
+
+# (column, label, explanation)
+FEATURES = [
+    ("tenure_months", "Tenure (bulan)",
+     "Lama pelanggan berlangganan. Pelanggan baru belum terikat dan paling mudah "
+     "pindah; makin lama berlangganan, hubungan makin kuat dan risiko churn biasanya turun."),
+    ("monthly_charges", "Tagihan bulanan (Rp)",
+     "Biaya yang dibayar tiap bulan. Tagihan tinggi membuat pelanggan lebih sensitif "
+     "harga dan lebih tergoda mencari penyedia yang lebih murah."),
+    ("total_charges", "Total tagihan (Rp)",
+     "Akumulasi tagihan sejak berlangganan (≈ tagihan bulanan × tenure). Mencerminkan "
+     "nilai dan lamanya hubungan; sangat berkaitan dengan tenure."),
+    ("num_complaints", "Jumlah keluhan",
+     "Keluhan yang pernah diajukan. Sinyal langsung ketidakpuasan; keluhan berulang "
+     "sering muncul sebelum pelanggan berhenti."),
+    ("support_calls", "Panggilan CS",
+     "Seberapa sering pelanggan menghubungi customer service. Panggilan yang banyak "
+     "menandakan masalah yang belum tuntas atau layanan yang membingungkan."),
+    ("contract_type", "Kontrak",
+     "Jenis komitmen kontrak. Kontrak bulanan tidak mengikat sehingga mudah dihentikan; "
+     "kontrak tahunan/dua tahun memberi penghalang berhenti."),
+    ("payment_method", "Pembayaran",
+     "Cara membayar. Metode yang manual atau kurang praktis dapat menambah gesekan "
+     "dan peluang pembayaran terlewat, sedangkan yang otomatis membuat pelanggan lebih betah."),
+    ("internet_service", "Layanan",
+     "Jenis layanan internet. Kualitas dan harga tiap layanan berbeda sehingga kepuasan "
+     "dan kecenderungan pindah ikut berbeda."),
+    ("segment", "Segmen",
+     "Tipe pelanggan (Korporat, Retail, UMKM). Kebutuhan, anggaran dan kesetiaan tiap "
+     "segmen berbeda."),
+    ("region", "Region",
+     "Wilayah pelanggan. Perbedaan infrastruktur, persaingan dan kualitas layanan antar "
+     "wilayah memengaruhi risiko churn."),
+]
+
+NUMERIC = META["numeric_features"]
+FEAT_COLS = META["feature_order"]
+FEAT_LABEL = {k: lab for k, lab, _ in FEATURES}
+_SAMPLE = DF[FEAT_COLS].sample(min(600, len(DF)), random_state=0).reset_index(drop=True)
+BASELINE = {
+    **{c: DF[c].median() for c in NUMERIC},
+    **{c: DF[c].mode()[0] for c in META["categorical_features"]}
+}
+
+
+def _proba(model, X):
+    return model.predict_proba(X[FEAT_COLS])[:, 1]
+
+
+def _with(X, col, val):
+    """Copy of X with `col` set to `val` (total_charges follows tenure/tagihan)."""
+    X = X.copy()
+    X[col] = val
+    if col in ("tenure_months", "monthly_charges"):
+        X["total_charges"] = X["monthly_charges"] * X["tenure_months"]
+    return X
+
+
+def feature_effects(model):
+    """Average effect on churn probability, measured on a sample of customers."""
+    base = _proba(model, _SAMPLE).mean()
+    out = {}
+    for col, _, _ in FEATURES:
+        if col in NUMERIC:
+            lo, hi = DF[col].quantile([0.1, 0.9])
+            d = (
+                _proba(model, _with(_SAMPLE, col, hi)).mean()
+                - _proba(model, _with(_SAMPLE, col, lo)).mean()
+            )
+            out[col] = {"kind": "num", "lo": lo, "hi": hi, "delta": d}
+        else:
+            means = {
+                c: _proba(model, _with(_SAMPLE, col, c)).mean() - base
+                for c in CATS[col]
+            }
+            out[col] = {
+                "kind": "cat",
+                "means": means,
+                "delta": max(means.values()) - min(means.values())
+            }
+    return out
+
+
+EFFECTS = {m["key"]: feature_effects(m["model"]) for m in TOP_MODELS}
+
+
+def _pp(x):
+    return f"{x * 100:+.1f} pp"
+
+
+def _tone(d):
+    if d > 0.005:
+        return RISK_COLOR["Tinggi"], "▲"
+    if d < -0.005:
+        return RISK_COLOR["Rendah"], "▼"
+    return C["muted"], "●"
+
+
+def _num(x, col):
+    return rupiah(x) if "charges" in col else f"{x:.0f}"
+
+
+def effect_cell(col, e):
+    if e["kind"] == "num":
+        color, arrow = _tone(e["delta"])
+        return html.Td([
+            html.Div(
+                f"{arrow} {_pp(e['delta'])}",
+                style={"color": color, "fontWeight": 600}
+            ),
+            html.Div(
+                f"jika naik dari {_num(e['lo'], col)} ke {_num(e['hi'], col)}",
+                style={"color": C["muted"], "fontSize": "11px"}
+            )
+        ], style=TD)
+
+    hi_c = max(e["means"], key=e["means"].get)
+    lo_c = min(e["means"], key=e["means"].get)
+    return html.Td([
+        html.Div(
+            f"▲ {hi_c} {_pp(e['means'][hi_c])}",
+            style={"color": RISK_COLOR["Tinggi"], "fontWeight": 600}
+        ),
+        html.Div(
+            f"▼ {lo_c} {_pp(e['means'][lo_c])}",
+            style={"color": RISK_COLOR["Rendah"], "fontWeight": 600}
+        ),
+        html.Div(
+            "dibanding rata-rata pelanggan",
+            style={"color": C["muted"], "fontSize": "11px"}
+        )
+    ], style=TD)
+
+
+def top_drivers(key, n=3):
+    eff = EFFECTS[key]
+    order = sorted(eff, key=lambda c: abs(eff[c]["delta"]), reverse=True)[:n]
+    return [FEAT_LABEL[c] for c in order]
+
+
+TD = {
+    "padding": "8px 10px",
+    "borderTop": "1px solid #E5E7EB",
+    "verticalAlign": "top",
+    "fontSize": "13px"
+}
+TH = {
+    "padding": "8px 10px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "background": "#E9EDF5"
+}
+
+insight_card = html.Div(
+    style=CARD,
     children=[
+        html.H4(
+            "Insight: bagaimana tiap faktor memengaruhi risiko churn",
+            style={"marginTop": 0, "fontSize": "15px"}
+        ),
+        html.P(
+            "Angka dihitung dari masing-masing model terlatih pada contoh pelanggan nyata: "
+            "satu faktor diubah (numerik: dari persentil ke-10 ke ke-90; kategori: dibanding "
+            "rata-rata) sementara faktor lain tetap. “pp” = poin persentase probabilitas churn. "
+            "Merah (▲) = menaikkan risiko, hijau (▼) = menurunkan. Ini hubungan statistik, "
+            "bukan bukti sebab-akibat.",
+            style={"color": C["muted"], "fontSize": "13px", "marginTop": 0}
+        ),
+
+        html.Div(
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+                "gap": "10px",
+                "marginBottom": "12px"
+            },
+            children=[
+                html.Div(
+                    style={"background": "#F5F7FB", "borderRadius": "8px", "padding": "10px 12px"},
+                    children=[
+                        html.Div(
+                            f"#{m['rank']} {m['name']}",
+                            style={"fontWeight": 600, "fontSize": "13px"}
+                        ),
+                        html.Div(
+                            "Pendorong terbesar: " + ", ".join(top_drivers(m["key"])),
+                            style={"fontSize": "13px", "color": C["ink"]}
+                        )
+                    ]
+                )
+                for m in TOP_MODELS
+            ]
+        ),
+
+        html.Div(
+            style={"overflowX": "auto"},
+            children=html.Table(
+                style={"width": "100%", "borderCollapse": "collapse"},
+                children=[
+                    html.Thead(html.Tr([
+                        html.Th("Faktor", style=TH),
+                        html.Th("Arti & mengapa berpengaruh", style=TH),
+                        *[html.Th(f"#{m['rank']} {m['name']}", style=TH) for m in TOP_MODELS]
+                    ])),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td(label_, style={**TD, "fontWeight": 600, "whiteSpace": "nowrap"}),
+                            html.Td(desc, style={**TD, "color": C["muted"], "minWidth": "240px"}),
+                            *[effect_cell(col, EFFECTS[m["key"]][col]) for m in TOP_MODELS]
+                        ])
+                        for col, label_, desc in FEATURES
+                    ])
+                ]
+            )
+        )
+    ]
+)
+
+
+def contrib_fig(model, row):
+    """Bar chart: how each of this customer's values shifts churn vs a typical customer."""
+    X = row[FEAT_COLS].copy()
+    p = _proba(model, X)[0]
+    items = []
+    for col, label_, _ in FEATURES:
+        d = p - _proba(model, _with(X, col, BASELINE[col]))[0]
+        val = X[col].iloc[0]
+        shown = _num(val, col) if col in NUMERIC else val
+        items.append((f"{label_}<br><b>{shown}</b>", d))
+    items.sort(key=lambda t: abs(t[1]))
+
+    vals = [d * 100 for _, d in items]
+    lo, hi = min(vals + [0]), max(vals + [0])
+    pad = max(hi - lo, 1) * 0.35  # room so value labels never touch the axis labels
+
+    fig = go.Figure(go.Bar(
+        x=vals,
+        y=[n for n, _ in items],
+        orientation="h",
+        marker_color=[
+            RISK_COLOR["Tinggi"] if d > 0 else RISK_COLOR["Rendah"] for _, d in items
+        ],
+        text=[f"{d * 100:+.1f}" for _, d in items],
+        textposition="outside",
+        cliponaxis=False
+    ))
+    fig.update_layout(
+        title={"text": "Pendorong churn pelanggan ini (vs tipikal)",
+               "font": {"size": 12}, "x": 0.01},
+        template="plotly_white",
+        height=420,
+        margin=dict(t=40, b=40, l=10, r=10),
+        xaxis={
+            "title": "Perubahan prob. churn (pp)",
+            "zeroline": True,
+            "range": [lo - pad, hi + pad]
+        },
+        yaxis={"automargin": True, "tickfont": {"size": 10}},
+        font={"family": "Inter, Arial, sans-serif", "size": 11},
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+    return fig
+
+
+def section_title(text, sub=None):
+    return html.Div(
+        style={"margin": "4px 2px 0"},
+        children=[
+            html.Div(text, style={"fontSize": "15px", "fontWeight": 700}),
+            html.Div(sub, style={"fontSize": "12px", "color": C["muted"]}) if sub else None
+        ]
+    )
+
+
+def result_card(m):
+    return html.Div(
+        style={**CARD, "minWidth": 0},
+        children=[
+            html.Div(
+                style={
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "flex-start",
+                    "gap": "8px",
+                    "paddingBottom": "8px",
+                    "borderBottom": "1px solid #E5E7EB"
+                },
+                children=[
+                    html.Div([
+                        html.Div(
+                            f"#{m['rank']}",
+                            style={"fontSize": "11px", "color": C["muted"], "fontWeight": 600}
+                        ),
+                        html.Div(
+                            m["name"],
+                            style={"fontSize": "15px", "fontWeight": 700, "lineHeight": 1.2}
+                        )
+                    ]),
+                    html.Div(
+                        f"CV ROC-AUC {m['cv_auc']:.4f}",
+                        style={
+                            "fontSize": "11px",
+                            "color": C["muted"],
+                            "background": "#F0F2F6",
+                            "borderRadius": "999px",
+                            "padding": "3px 8px",
+                            "whiteSpace": "nowrap"
+                        }
+                    )
+                ]
+            ),
+
+            html.Div(
+                id=f"pred-output-{m['key']}",
+                style={"padding": "10px 0 0", "minHeight": "118px"},
+                children=html.P("Memuat prediksi…")
+            ),
+
+            dcc.Graph(
+                id=f"g-gauge-{m['key']}",
+                config={"displayModeBar": False},
+                style={"height": "210px"}
+            ),
+
+            html.Div(
+                style={"borderTop": "1px solid #E5E7EB", "marginTop": "6px"}
+            ),
+
+            dcc.Graph(
+                id=f"g-contrib-{m['key']}",
+                config={"displayModeBar": False},
+                style={"height": "420px"}
+            )
+        ]
+    )
+
+
+tab_predict = html.Div(
+    style={"display": "flex", "flexDirection": "column", "gap": "12px"},
+    children=[
+        # --- Input form ---------------------------------------------------
         html.Div(
             style=CARD,
             children=[
                 html.H4(
                     "Simulasi prediksi pelanggan",
-                    style={"marginTop": 0}
+                    style={"marginTop": 0, "marginBottom": "12px", "fontSize": "15px"}
                 ),
 
                 html.Div(
                     style={
                         "display": "grid",
-                        "gridTemplateColumns": "1fr 1fr",
-                        "gap": "10px"
+                        "gridTemplateColumns": "repeat(auto-fit, minmax(180px, 1fr))",
+                        "gap": "12px 16px",
+                        "alignItems": "end"
                     },
                     children=[
                         dd_input("p-region", "Region", CATS["region"]),
@@ -472,47 +831,47 @@ tab_predict = html.Div(
                         num_input("p-tenure", "Tenure (bulan)", 6, 1, 72),
                         num_input("p-monthly", "Tagihan bulanan (Rp)", 450000, 100000, 2000000, 10000),
                         num_input("p-complaints", "Jumlah keluhan", 2, 0, 10),
-                        num_input("p-calls", "Panggilan CS", 3, 0, 15)
+                        num_input("p-calls", "Panggilan CS", 3, 0, 15),
+
+                        html.Button(
+                            "Jalankan prediksi",
+                            id="btn-predict",
+                            n_clicks=0,
+                            className="primary-btn",
+                            style={
+                                "background": C["accent"],
+                                "color": "white",
+                                "border": 0,
+                                "padding": "10px 16px",
+                                "fontSize": "13px",
+                                "borderRadius": "6px",
+                                "cursor": "pointer",
+                                "height": "38px"
+                            }
+                        )
                     ]
-                ),
-
-                html.Br(),
-
-                html.Button(
-                    "Jalankan prediksi",
-                    id="btn-predict",
-                    n_clicks=0,
-                    style={
-                        "background": C["accent"],
-                        "color": "white",
-                        "border": 0,
-                        "padding": "10px 18px",
-                        "borderRadius": "8px",
-                        "cursor": "pointer"
-                    }
                 )
             ]
         ),
 
+        # --- Results: one card per model, side by side ---------------------
+        section_title(
+            "Hasil prediksi dari 3 model",
+            "Diurutkan berdasarkan CV ROC-AUC. Semua model memakai input yang sama."
+        ),
+
         html.Div(
-            style=CARD,
-            children=[
-                html.H4(
-                    "Hasil prediksi",
-                    style={"marginTop": 0}
-                ),
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+                "gap": "12px",
+                "alignItems": "start"
+            },
+            children=[result_card(m) for m in TOP_MODELS]
+        ),
 
-                html.Div(
-                    id="pred-output",
-                    children=html.P("Isi form lalu klik tombol.")
-                ),
-
-                dcc.Graph(
-                    id="g-gauge",
-                    style={"height": "260px"}
-                )
-            ]
-        )
+        # --- Insight table ---------------------------------------------------
+        insight_card
     ]
 )
 
@@ -532,23 +891,23 @@ app.layout = html.Div(
     style={
         "background": C["bg"],
         "minHeight": "100vh",
-        "padding": "16px",
+        "padding": "20px 28px",
         "fontFamily": "Inter, Arial, sans-serif",
         "color": C["ink"]
     },
     children=[
         html.Div(
-            style={"marginBottom": "12px"},
+            style={"marginBottom": "14px"},
             children=[
                 html.H2(
                     "Customer Churn Intelligence Dashboard",
-                    style={"margin": 0}
+                    style={"margin": "0 0 4px", "fontSize": "26px"}
                 ),
 
                 html.Div(
                     "Pertanyaan bisnis: pelanggan mana yang berisiko churn dan apa yang harus dilakukan? "
                     "· Data latihan 2023–2025 · Prediksi dari final trained model",
-                    style={"color": C["muted"]}
+                    style={"color": C["muted"], "fontSize": "14px"}
                 )
             ]
         ),
@@ -563,27 +922,14 @@ app.layout = html.Div(
                 sidebar,
 
                 html.Div(
-                    style={
-                        "flex": 1,
-                        "minWidth": 0
-                    },
+                    style={"flex": 1, "minWidth": 0},
                     children=[
-                        dcc.Tabs(
-                            id="tabs",
-                            value="overview",
-                            children=[
-                                dcc.Tab(
-                                    label="Overview & Risiko",
-                                    value="overview",
-                                    children=[tab_overview]
-                                ),
-
-                                dcc.Tab(
-                                    label="Simulasi Prediksi",
-                                    value="predict",
-                                    children=[tab_predict]
-                                )
-                            ]
+                        dcc.Store(id="page", data="overview"),
+                        html.Div(id="page-overview", children=[tab_overview]),
+                        html.Div(
+                            id="page-predict",
+                            style={"display": "none"},
+                            children=[tab_predict]
                         )
                     ]
                 )
@@ -594,35 +940,63 @@ app.layout = html.Div(
 
 
 # ============================================================
-# 7b. SIDEBAR CALLBACKS (navigation, active highlight, collapse)
+# 7b. STEPPER (+/-) CALLBACKS
 # ============================================================
 
-NAV_TARGET = {id_: tab for id_, _, _, tab in NAV_ITEMS}
+def _register_stepper(id_, mn, mx, step):
+    @callback(
+        Output(id_, "value"),
+        Input(f"{id_}-minus", "n_clicks"),
+        Input(f"{id_}-plus", "n_clicks"),
+        State(id_, "value"),
+        prevent_initial_call=True
+    )
+    def _step(_m, _p, val):
+        val = mn if val is None else val
+        val = val - step if ctx.triggered_id == f"{id_}-minus" else val + step
+        return max(mn, min(mx, val))
+
+
+for _id, _mn, _mx, _st in STEPPERS:
+    _register_stepper(_id, _mn, _mx, _st)
+
+
+
+# ============================================================
+# 7c. SIDEBAR NAVIGATION CALLBACKS
+# ============================================================
+
+NAV_TARGET = {id_: page for id_, _, _, page in NAV_ITEMS}
 
 
 @callback(
-    Output("tabs", "value"),
+    Output("page", "data"),
     [Input(id_, "n_clicks") for id_, *_ in NAV_ITEMS],
     prevent_initial_call=True
 )
-def nav_to_tab(*_):
-    tab = NAV_TARGET.get(ctx.triggered_id)
-    if tab is None:
+def nav_to_page(*_):
+    page = NAV_TARGET.get(ctx.triggered_id)
+    if page is None:
         raise PreventUpdate  # page belum tersedia
-    return tab
+    return page
 
 
 @callback(
-    [Output(id_, "style") for id_, *_ in NAV_ITEMS],
-    Input("tabs", "value")
+    Output("page-overview", "style"),
+    Output("page-predict", "style"),
+    *[Output(id_, "style") for id_, *_ in NAV_ITEMS],
+    Input("page", "data")
 )
-def highlight_nav(active_tab):
-    return [
-        {**NAV_BASE, "background": SB["active"], "fontWeight": 600}
-        if tab == active_tab
-        else NAV_BASE
-        for _, _, _, tab in NAV_ITEMS
-    ]
+def show_page(page):
+    return (
+        {"display": "block" if page == "overview" else "none"},
+        {"display": "block" if page == "predict" else "none"},
+        *[
+            {**NAV_BASE, "background": SB["active"], "fontWeight": 600}
+            if target == page else NAV_BASE
+            for _, _, _, target in NAV_ITEMS
+        ]
+    )
 
 
 @callback(
@@ -943,8 +1317,15 @@ def update_overview(region, segment, kontrak, risk, tenure):
 # ============================================================
 
 @callback(
-    Output("pred-output", "children"),
-    Output("g-gauge", "figure"),
+    *[
+        Output(f"{kind}-{m['key']}", prop)
+        for m in TOP_MODELS
+        for kind, prop in (
+            ("pred-output", "children"),
+            ("g-gauge", "figure"),
+            ("g-contrib", "figure")
+        )
+    ],
 
     Input("btn-predict", "n_clicks"),
 
@@ -957,8 +1338,6 @@ def update_overview(region, segment, kontrak, risk, tenure):
     State("p-monthly", "value"),
     State("p-complaints", "value"),
     State("p-calls", "value"),
-
-    prevent_initial_call=True
 )
 
 def run_prediction(
@@ -995,16 +1374,26 @@ def run_prediction(
     errs = validate_input(row, META)
 
     if errs:
-        return (
-            html.Div([
-                html.P(e, style={"color": "crimson"})
-                for e in errs
-            ]),
-            px.scatter()
+        err = html.Div([
+            html.P(e, style={"color": "crimson"})
+            for e in errs
+        ])
+        return tuple(
+            x for _ in TOP_MODELS for x in (err, px.scatter(), px.scatter())
         )
 
-    # Run prediction
-    r = predict(MODEL, row, META).iloc[0]
+    # Run prediction with each of the top models
+    outputs = []
+    for m in TOP_MODELS:
+        outputs.extend(
+            render_result(predict(m["model"], row, META).iloc[0])
+        )
+        outputs.append(contrib_fig(m["model"], row))
+
+    return tuple(outputs)
+
+
+def render_result(r):
 
     # Recommendation based on risk category
     saran = {
@@ -1040,51 +1429,45 @@ def run_prediction(
 
         html.P(
             saran,
-            style={"color": C["muted"]}
+            style={"color": C["muted"], "fontSize": "14px"}
         )
     ])
 
-    # Gauge chart
     gauge = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=r.churn_probability * 100,
-
-            number={"suffix": "%"},
-
+            number={
+                "suffix": "%",
+                "valueformat": ".1f",
+                "font": {"size": 38, "color": C["ink"]}
+            },
             gauge={
-                "axis": {"range": [0, 100]},
-
-                "bar": {
-                    "color": RISK_COLOR[r.risk_category]
+                "axis": {
+                    "range": [0, 100],
+                    "tickvals": [0, 20, 40, 60, 80, 100],
+                    "tickfont": {"size": 10, "color": C["muted"]}
                 },
-
+                "bar": {
+                    "color": RISK_COLOR[r.risk_category],
+                    "thickness": 0.75
+                },
+                "bgcolor": "white",
+                "borderwidth": 0,
                 "steps": [
-                    {
-                        "range": [0, 30],
-                        "color": "#E6F4EA"
-                    },
-                    {
-                        "range": [30, 60],
-                        "color": "#FDF0E6"
-                    },
-                    {
-                        "range": [60, 100],
-                        "color": "#FBE3E3"
-                    }
+                    {"range": [0, 30], "color": "#E6F4EA"},
+                    {"range": [30, 60], "color": "#FDF0E6"},
+                    {"range": [60, 100], "color": "#FBE3E3"}
                 ]
             }
         )
     )
 
     gauge.update_layout(
-        margin=dict(
-            t=20,
-            b=10,
-            l=20,
-            r=20
-        ),
-        height=240
+        margin=dict(t=20, b=5, l=25, r=25),
+        height=210,
+        paper_bgcolor="rgba(0,0,0,0)",
+        font={"family": "Inter, Arial, sans-serif"}
     )
 
     return out, gauge
@@ -1097,5 +1480,5 @@ def run_prediction(
 if __name__ == "__main__":
     app.run(
         debug=True,
-        port=8053
+        port=8054
     )

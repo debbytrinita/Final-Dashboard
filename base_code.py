@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from dash import Dash, html, dcc, dash_table, Input, Output, State, callback 
 from dash.exceptions import PreventUpdate 
   
-ROOT = Path(__file__).resolve().parents[1] 
+ROOT = Path(__file__).resolve().parent 
 sys.path.append(str(ROOT)) 
 from utils.model_utils import load_model, load_metadata, validate_input, predict 
   

@@ -1,3 +1,6 @@
+import base64
+import io
+import json
 import sys
 from pathlib import Path
 
@@ -5,7 +8,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from dash import Dash, html, dcc, dash_table, Input, Output, State, callback, ctx
+from dash import Dash, html, dcc, dash_table, Input, Output, State, callback, ctx, no_update
 from dash.exceptions import PreventUpdate
 
 
@@ -13,14 +16,15 @@ from dash.exceptions import PreventUpdate
 # 1. PATHS AND MODEL
 # ============================================================
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT))
 
 from utils.model_utils import (
     load_model,
     load_metadata,
     validate_input,
-    predict
+    predict,
+    risk_category
 )
 
 
@@ -30,6 +34,27 @@ from utils.model_utils import (
 
 META = load_metadata()
 MODEL = load_model()
+
+# Top 3 models (ranked by CV roc_auc) for multi-observation prediction
+REGISTRY = json.loads(
+    (ROOT / "models" / "top_models_registry.json").read_text(encoding="utf-8")
+)
+
+MODEL_SHORT = {
+    "logreg": "LogReg",
+    "logreg_ros": "LogReg + ROS",
+    "gradient_boosting": "Gradient Boosting"
+}
+
+MODELS = {
+    m["key"]: {
+        "name": m["name"],
+        "short": MODEL_SHORT.get(m["key"], m["name"]),
+        "auc": m["cv_roc_auc"]["mean"],
+        "model": load_model(ROOT / "models" / m["file"])
+    }
+    for m in sorted(REGISTRY["models"], key=lambda m: m["rank"])
+}
 
 raw = pd.read_csv(
     ROOT / "data" / "customer_churn.csv",
@@ -93,7 +118,7 @@ def label(t):
 
 def kpi(judul, nilai, sub=""):
     return html.Div(
-        style={**CARD, "flex": 1},
+        style={**CARD, "flex": 1, "minWidth": 0},
         children=[
             html.Div(
                 judul,
@@ -168,7 +193,7 @@ NAV_ITEMS = [
     ("nav-overview", "Data Overview", "📊", "overview"),
     ("nav-eda", "Exploratory Data Analysis", "🔍", None),
     ("nav-single", "Prediksi Single Observasi", "👤", "predict"),
-    ("nav-multi", "Prediksi Multi Observasi", "🗂️", None),
+    ("nav-multi", "Prediksi Multi Observasi", "🗂️", "multi"),
     ("nav-team", "Tim Developer", "👥", None)
 ]
 
@@ -230,14 +255,16 @@ sidebar = html.Div(
                     )
                 ]),
                 html.Button(
-                    "☰",
-                    id="sb-toggle",
+                    "«",
+                    id="sb-close",
                     n_clicks=0,
+                    title="Tutup sidebar",
                     style={
                         "background": "transparent",
                         "color": SB["text"],
                         "border": 0,
-                        "fontSize": "18px",
+                        "fontSize": "20px",
+                        "lineHeight": 1,
                         "cursor": "pointer"
                     }
                 )
@@ -518,8 +545,207 @@ tab_predict = html.Div(
 
 
 # ============================================================
+# 6b. MULTI-OBSERVATION PREDICTION TAB
+# ============================================================
+
+FEATURES = META["feature_order"]
+THRESHOLD = META["decision_threshold"]
+
+FEATURE_LABELS = {
+    "customer_id": "ID",
+    "region": "Region",
+    "segment": "Segmen",
+    "contract_type": "Kontrak",
+    "payment_method": "Pembayaran",
+    "internet_service": "Layanan",
+    "tenure_months": "Tenure",
+    "monthly_charges": "Tagihan bulanan",
+    "total_charges": "Total tagihan",
+    "num_complaints": "Keluhan",
+    "support_calls": "Panggilan CS"
+}
+
+BTN = {
+    "background": C["accent"],
+    "color": "white",
+    "border": 0,
+    "padding": "8px 14px",
+    "borderRadius": "8px",
+    "cursor": "pointer",
+    "marginRight": "8px"
+}
+
+BTN_OUTLINE = {
+    **BTN,
+    "background": "white",
+    "color": C["accent"],
+    "border": f"1px solid {C['accent']}"
+}
+
+tab_multi = html.Div([
+    dcc.Store(id="m-data"),
+    dcc.Store(id="m-result"),
+    dcc.Download(id="dl-template"),
+    dcc.Download(id="dl-result"),
+
+    html.Div(
+        style={**CARD, "marginBottom": "12px"},
+        children=[
+            html.H4("Prediksi multi observasi", style={"marginTop": 0}),
+
+            html.P(
+                "Unggah file CSV atau Excel berisi data pelanggan. Kolom wajib: "
+                + ", ".join(c for c in FEATURES if c != "total_charges")
+                + ". Kolom customer_id dan total_charges opsional "
+                "(total_charges dihitung dari tagihan bulanan × tenure bila kosong).",
+                style={"color": C["muted"], "fontSize": "13px"}
+            ),
+
+            html.Div(
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "3fr 2fr",
+                    "gap": "16px"
+                },
+                children=[
+                    dcc.Upload(
+                        id="m-upload",
+                        accept=".csv,.xlsx,.xls",
+                        multiple=False,
+                        children=html.Div([
+                            "📁 Tarik & lepas file di sini atau ",
+                            html.A("pilih file", style={"color": C["accent"], "fontWeight": 600}),
+                            html.Div("(.csv / .xlsx)", style={"color": C["muted"], "fontSize": "12px"})
+                        ]),
+                        style={
+                            "border": f"2px dashed {C['accent']}",
+                            "borderRadius": "10px",
+                            "padding": "28px 12px",
+                            "textAlign": "center",
+                            "cursor": "pointer",
+                            "background": "#F8FAFF"
+                        }
+                    ),
+
+                    html.Div([
+                        label("Model yang digunakan"),
+                        dcc.Checklist(
+                            id="m-models",
+                            options=[
+                                {
+                                    "label": f" {v['name']} (CV AUC {v['auc']:.3f})",
+                                    "value": k
+                                }
+                                for k, v in MODELS.items()
+                            ],
+                            value=list(MODELS),
+                            labelStyle={"display": "block", "fontSize": "13px", "margin": "4px 0"}
+                        ),
+                        html.Div(
+                            "Prediksi akhir = rata-rata probabilitas model terpilih "
+                            f"(threshold {THRESHOLD:.0%}).",
+                            style={"color": C["muted"], "fontSize": "12px", "marginTop": "6px"}
+                        )
+                    ])
+                ]
+            ),
+
+            html.Div(
+                style={"marginTop": "12px"},
+                children=[
+                    html.Button("Unduh contoh file", id="btn-template", n_clicks=0, style=BTN_OUTLINE)
+                ]
+            ),
+
+            dcc.Loading(html.Div(id="m-status", style={"marginTop": "10px", "fontSize": "13px"}))
+        ]
+    ),
+
+    html.Div(
+        id="m-results",
+        style={"display": "none"},
+        children=[
+            html.Div(
+                id="m-kpi",
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "repeat(auto-fit, minmax(180px, 1fr))",
+                    "gap": "12px",
+                    "marginBottom": "12px"
+                }
+            ),
+
+            html.Div(
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+                    "gap": "12px"
+                },
+                children=[
+                    html.Div(
+                        dcc.Graph(
+                            id=gid,
+                            config={"responsive": True, "displaylogo": False},
+                            style={"height": "300px", "width": "100%"}
+                        ),
+                        style={**CARD, "minWidth": 0, "overflow": "hidden"}
+                    )
+                    for gid in ["g-m-pie", "g-m-risk-model", "g-m-contract", "g-m-region"]
+                ]
+            ),
+
+            html.Div(
+                style={**CARD, "marginTop": "12px"},
+                children=[
+                    html.Div(
+                        style={
+                            "display": "flex",
+                            "justifyContent": "space-between",
+                            "alignItems": "center",
+                            "marginBottom": "8px"
+                        },
+                        children=[
+                            html.H4("Tabel hasil prediksi", style={"margin": 0}),
+                            html.Div([
+                                html.Button("⬇ Export Excel", id="btn-dl-xlsx", n_clicks=0, style=BTN),
+                                html.Button("⬇ Export CSV", id="btn-dl-csv", n_clicks=0, style=BTN_OUTLINE)
+                            ])
+                        ]
+                    ),
+
+                    dash_table.DataTable(
+                        id="tbl-multi",
+                        page_size=15,
+                        sort_action="native",
+                        filter_action="native",
+                        style_table={"overflowX": "auto"},
+                        style_cell={
+                            "padding": "6px",
+                            "fontSize": "13px",
+                            "textAlign": "left",
+                            "whiteSpace": "nowrap"
+                        },
+                        style_header={
+                            "fontWeight": "bold",
+                            "background": "#E9EDF5"
+                        }
+                    )
+                ]
+            )
+        ]
+    )
+])
+
+
+# ============================================================
 # 7. MAIN DASHBOARD LAYOUT
 # ============================================================
+
+PAGES = {
+    "overview": tab_overview,
+    "predict": tab_predict,
+    "multi": tab_multi
+}
 
 app = Dash(
     __name__,
@@ -537,19 +763,36 @@ app.layout = html.Div(
         "color": C["ink"]
     },
     children=[
+        dcc.Store(id="sb-open", data=True),
+
         html.Div(
-            style={"marginBottom": "12px"},
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "12px",
+                "marginBottom": "12px"
+            },
             children=[
-                html.H2(
-                    "Customer Churn Intelligence Dashboard",
-                    style={"margin": 0}
+                html.Button(
+                    "☰",
+                    id="sb-show",
+                    n_clicks=0,
+                    title="Buka sidebar",
+                    style={"display": "none"}
                 ),
 
-                html.Div(
-                    "Pertanyaan bisnis: pelanggan mana yang berisiko churn dan apa yang harus dilakukan? "
-                    "· Data latihan 2023–2025 · Prediksi dari final trained model",
-                    style={"color": C["muted"]}
-                )
+                html.Div([
+                    html.H2(
+                        "Customer Churn Intelligence Dashboard",
+                        style={"margin": 0}
+                    ),
+
+                    html.Div(
+                        "Pertanyaan bisnis: pelanggan mana yang berisiko churn dan apa yang harus dilakukan? "
+                        "· Data latihan 2023–2025 · Prediksi dari final trained model",
+                        style={"color": C["muted"]}
+                    )
+                ])
             ]
         ),
 
@@ -568,23 +811,11 @@ app.layout = html.Div(
                         "minWidth": 0
                     },
                     children=[
-                        dcc.Tabs(
-                            id="tabs",
-                            value="overview",
-                            children=[
-                                dcc.Tab(
-                                    label="Overview & Risiko",
-                                    value="overview",
-                                    children=[tab_overview]
-                                ),
-
-                                dcc.Tab(
-                                    label="Simulasi Prediksi",
-                                    value="predict",
-                                    children=[tab_predict]
-                                )
-                            ]
-                        )
+                        dcc.Store(id="page", data="overview"),
+                        *[
+                            html.Div(id=f"page-{key}", children=[content])
+                            for key, content in PAGES.items()
+                        ]
                     ]
                 )
             ]
@@ -601,41 +832,66 @@ NAV_TARGET = {id_: tab for id_, _, _, tab in NAV_ITEMS}
 
 
 @callback(
-    Output("tabs", "value"),
+    Output("page", "data"),
     [Input(id_, "n_clicks") for id_, *_ in NAV_ITEMS],
     prevent_initial_call=True
 )
-def nav_to_tab(*_):
-    tab = NAV_TARGET.get(ctx.triggered_id)
-    if tab is None:
+def nav_to_page(*_):
+    page = NAV_TARGET.get(ctx.triggered_id)
+    if page is None:
         raise PreventUpdate  # page belum tersedia
-    return tab
+    return page
 
 
 @callback(
     [Output(id_, "style") for id_, *_ in NAV_ITEMS],
-    Input("tabs", "value")
+    [Output(f"page-{key}", "style") for key in PAGES],
+    Input("page", "data")
 )
-def highlight_nav(active_tab):
-    return [
+def show_page(active):
+    nav = [
         {**NAV_BASE, "background": SB["active"], "fontWeight": 600}
-        if tab == active_tab
+        if page == active
         else NAV_BASE
-        for _, _, _, tab in NAV_ITEMS
+        for _, _, _, page in NAV_ITEMS
     ]
+    pages = [{"display": "block" if key == active else "none"} for key in PAGES]
+    return nav + pages
+
+
+SB_SHOW_BTN = {
+    "background": SB["bg"],
+    "color": SB["text"],
+    "border": 0,
+    "borderRadius": "8px",
+    "width": "40px",
+    "height": "40px",
+    "fontSize": "20px",
+    "cursor": "pointer",
+    "flexShrink": 0,
+    "boxShadow": "0 1px 3px rgba(0,0,0,.2)"
+}
 
 
 @callback(
-    Output("sb-body", "style"),
+    Output("sb-open", "data"),
+    Input("sb-close", "n_clicks"),
+    Input("sb-show", "n_clicks"),
+    prevent_initial_call=True
+)
+def toggle_sidebar(*_):
+    return ctx.triggered_id == "sb-show"
+
+
+@callback(
     Output("sidebar", "style"),
-    Input("sb-toggle", "n_clicks"),
+    Output("sb-show", "style"),
+    Input("sb-open", "data"),
     State("sidebar", "style")
 )
-def toggle_sidebar(n, style):
-    style = dict(style)
-    collapsed = bool(n and n % 2)
-    style["width"] = "70px" if collapsed else "260px"
-    return {"display": "none" if collapsed else "block"}, style
+def render_sidebar(is_open, style):
+    style = {**style, "display": "block" if is_open else "none"}
+    return style, {**SB_SHOW_BTN, "display": "none" if is_open else "block"}
 
 
 # ============================================================
@@ -1091,11 +1347,350 @@ def run_prediction(
 
 
 # ============================================================
-# 11. RUN APPLICATION
+# 11. CALLBACK 3: MULTI-OBSERVATION PREDICTION
+# ============================================================
+
+def read_upload(contents, filename):
+    _, b64 = contents.split(",", 1)
+    data = base64.b64decode(b64)
+    name = (filename or "").lower()
+
+    if name.endswith(".csv"):
+        text = data.decode("utf-8-sig")
+        header = text.splitlines()[0] if text else ""
+        sep = ";" if header.count(";") > header.count(",") else ","
+        return pd.read_csv(io.StringIO(text), sep=sep)
+
+    if name.endswith(".xlsx"):
+        return pd.read_excel(io.BytesIO(data))
+
+    raise ValueError("Format file tidak didukung. Gunakan .csv atau .xlsx.")
+
+
+def clean_upload(df):
+    """Mengembalikan (data valid, catatan, error)."""
+    df = df.copy()
+    df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+
+    if "total_charges" not in df.columns:
+        df["total_charges"] = pd.NA
+
+    missing = [c for c in FEATURES if c not in df.columns]
+    if missing:
+        return None, [], f"Kolom wajib tidak ditemukan: {', '.join(missing)}"
+
+    if "customer_id" not in df.columns:
+        df.insert(0, "customer_id", [f"ROW-{i + 1:04d}" for i in range(len(df))])
+    df["customer_id"] = df["customer_id"].astype(str)
+
+    for c in META["numeric_features"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    df["total_charges"] = df["total_charges"].fillna(df["monthly_charges"] * df["tenure_months"])
+
+    for c in META["categorical_features"]:
+        df[c] = df[c].astype("string").str.strip()
+
+    bad = df[FEATURES].isna().any(axis=1)
+    for c in META["categorical_features"]:
+        bad |= ~df[c].isin(META["categories"][c])
+
+    notes = []
+    if bad.any():
+        ids = ", ".join(df.loc[bad, "customer_id"].head(10))
+        more = " …" if bad.sum() > 10 else ""
+        notes.append(
+            f"{bad.sum()} baris dilewati karena nilai kosong atau kategori tidak dikenal "
+            f"(ID: {ids}{more})."
+        )
+
+    df = df.loc[~bad, ["customer_id", *FEATURES]].reset_index(drop=True)
+    for c in META["categorical_features"]:
+        df[c] = df[c].astype(str)
+
+    errs = validate_input(df, META)
+    return df, notes, "; ".join(errs) if errs else None
+
+
+def predict_multi(df, keys):
+    out = df.copy()
+    for k in keys:
+        r = predict(MODELS[k]["model"], df, META)
+        out[f"prob_{k}"] = r["churn_probability"]
+        out[f"pred_{k}"] = r["predicted_churn"].map({1: "Churn", 0: "Bertahan"})
+        out[f"risk_{k}"] = r["risk_category"]
+
+    probs = out[[f"prob_{k}" for k in keys]]
+    out["prob_avg"] = probs.mean(axis=1).round(4)
+    out["votes"] = (probs >= THRESHOLD).sum(axis=1)
+    out["pred_final"] = (out["prob_avg"] >= THRESHOLD).map({True: "Churn", False: "Bertahan"})
+    out["risk_final"] = [risk_category(p, META) for p in out["prob_avg"]]
+    return out
+
+
+def result_columns(keys):
+    """(id, nama kolom, format persen?) untuk tabel dan export."""
+    cols = [(c, FEATURE_LABELS[c], False) for c in ["customer_id", *FEATURES]]
+    for k in keys:
+        s = MODELS[k]["short"]
+        cols += [
+            (f"prob_{k}", f"Prob. {s}", True),
+            (f"pred_{k}", f"Prediksi {s}", False),
+            (f"risk_{k}", f"Risiko {s}", False)
+        ]
+    cols += [
+        ("prob_avg", "Prob. rata-rata", True),
+        ("votes", f"Model prediksi churn (dari {len(keys)})", False),
+        ("pred_final", "Prediksi akhir", False),
+        ("risk_final", "Risiko akhir", False)
+    ]
+    return cols
+
+
+def model_long(res, keys):
+    """Hasil per model dalam format panjang untuk visualisasi."""
+    return pd.concat([
+        pd.DataFrame({
+            "model": MODELS[k]["short"],
+            "customer_id": res["customer_id"],
+            "contract_type": res["contract_type"],
+            "prob": res[f"prob_{k}"],
+            "pred": res[f"pred_{k}"],
+            "risk": res[f"risk_{k}"]
+        })
+        for k in keys
+    ], ignore_index=True)
+
+
+def risk_styles(keys):
+    styles = []
+    for col in [f"risk_{k}" for k in keys] + ["risk_final"]:
+        styles += [
+            {
+                "if": {"filter_query": f"{{{col}}} = 'Tinggi'", "column_id": col},
+                "color": "white",
+                "backgroundColor": RISK_COLOR["Tinggi"]
+            },
+            {
+                "if": {"filter_query": f"{{{col}}} = 'Sedang'", "column_id": col},
+                "backgroundColor": "#FBE3D3"
+            }
+        ]
+    for col in [f"pred_{k}" for k in keys] + ["pred_final"]:
+        styles.append({
+            "if": {"filter_query": f"{{{col}}} = 'Churn'", "column_id": col},
+            "color": "crimson",
+            "fontWeight": 600
+        })
+    return styles
+
+
+def msg(text, color):
+    return html.Div(text, style={"color": color})
+
+
+@callback(
+    Output("m-status", "children"),
+    Output("m-results", "style"),
+    Output("m-result", "data"),
+    Output("m-kpi", "children"),
+    Output("g-m-pie", "figure"),
+    Output("g-m-risk-model", "figure"),
+    Output("g-m-contract", "figure"),
+    Output("g-m-region", "figure"),
+    Output("tbl-multi", "data"),
+    Output("tbl-multi", "columns"),
+    Output("tbl-multi", "style_data_conditional"),
+    Input("m-upload", "contents"),
+    Input("m-models", "value"),
+    State("m-upload", "filename")
+)
+def run_multi_prediction(contents, keys, filename):
+    hidden = {"display": "none"}
+    skip = [no_update] * 8
+
+    if not contents:
+        return msg("Belum ada file yang diunggah.", C["muted"]), hidden, None, *skip
+
+    keys = [k for k in MODELS if k in (keys or [])]
+    if not keys:
+        return msg("Pilih minimal satu model.", "crimson"), hidden, None, *skip
+
+    try:
+        df, notes, err = clean_upload(read_upload(contents, filename))
+    except Exception as e:
+        return msg(f"Gagal membaca file '{filename}': {e}", "crimson"), hidden, None, *skip
+
+    if err:
+        return msg(err, "crimson"), hidden, None, *skip
+    if df.empty:
+        return msg("Tidak ada baris valid untuk diprediksi. " + " ".join(notes), "crimson"), \
+            hidden, None, *skip
+
+    res = predict_multi(df, keys)
+    long = model_long(res, keys)
+    n = len(res)
+
+    status = html.Div([
+        msg(f"✅ {filename}: {n:,} pelanggan diprediksi dengan {len(keys)} model.", "#2E7D32"),
+        *[msg(f"⚠️ {t}", "#B26A00") for t in notes]
+    ])
+
+    # KPI
+    n_churn = (res["pred_final"] == "Churn").sum()
+    high = res["risk_final"] == "Tinggi"
+    agree = (res["votes"].isin([0, len(keys)])).mean()
+    kpis = [
+        kpi("Pelanggan diprediksi", f"{n:,}", filename),
+        kpi("Prediksi churn", f"{n_churn:,}", f"{n_churn / n:.1%} dari total"),
+        kpi("Risiko tinggi", f"{high.sum():,}",
+            rupiah(res.loc[high, "monthly_charges"].sum()) + "/bln berisiko"),
+        kpi("Kesepakatan model", f"{agree:.1%}", "semua model memberi prediksi sama")
+    ]
+
+    # Chart 1: final risk composition
+    g_pie = px.pie(
+        res,
+        names="risk_final",
+        hole=0.55,
+        color="risk_final",
+        color_discrete_map=RISK_COLOR,
+        category_orders={"risk_final": RISK_ORDER},
+        title="Komposisi risiko akhir"
+    )
+    g_pie.update_traces(textinfo="percent+label", sort=False)
+    g_pie.add_annotation(text=f"<b>{n:,}</b><br>pelanggan", showarrow=False, font_size=13)
+    g_pie.update_layout(showlegend=False)
+
+    # Chart 2: risk category count per model
+    rk = long.groupby(["model", "risk"], sort=False).size().reset_index(name="jumlah")
+    g_risk = px.bar(
+        rk,
+        x="model",
+        y="jumlah",
+        color="risk",
+        barmode="group",
+        text_auto=True,
+        color_discrete_map=RISK_COLOR,
+        category_orders={"risk": RISK_ORDER},
+        template="plotly_white",
+        title="Kategori risiko per model",
+        labels={"model": "", "jumlah": "Pelanggan", "risk": ""}
+    )
+
+    # Chart 3: average churn probability per contract type, per model
+    ct = long.groupby(["contract_type", "model"], sort=False)["prob"].mean().reset_index()
+    g_contract = px.bar(
+        ct,
+        x="contract_type",
+        y="prob",
+        color="model",
+        barmode="group",
+        category_orders={"contract_type": ["Bulanan", "Tahunan", "Dua Tahun"]},
+        template="plotly_white",
+        title="Rata-rata prob. churn per kontrak",
+        labels={"contract_type": "", "prob": "Prob. churn", "model": ""}
+    )
+    g_contract.update_yaxes(tickformat=".0%")
+
+    # Chart 4: final risk per region
+    rg = res.groupby(["region", "risk_final"]).size().reset_index(name="jumlah")
+    g_region = px.bar(
+        rg,
+        x="jumlah",
+        y="region",
+        color="risk_final",
+        orientation="h",
+        color_discrete_map=RISK_COLOR,
+        category_orders={"risk_final": RISK_ORDER},
+        template="plotly_white",
+        title="Risiko akhir per region",
+        labels={"jumlah": "Pelanggan", "region": "", "risk_final": ""}
+    )
+
+    for fig in (g_pie, g_risk, g_contract, g_region):
+        fig.update_layout(
+            autosize=True,
+            height=None,
+            margin=dict(t=60, b=30, l=10, r=10),
+            title=dict(font_size=14, x=0.02, y=0.97),
+            legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, font_size=11),
+            font_size=11
+        )
+
+    columns = [
+        {"name": name, "id": cid, "type": "numeric", "format": {"specifier": ".1%"}}
+        if pct else {"name": name, "id": cid}
+        for cid, name, pct in result_columns(keys)
+    ]
+    records = res.to_dict("records")
+
+    return (
+        status,
+        {"display": "block"},
+        {"keys": keys, "records": records, "filename": filename},
+        kpis,
+        g_pie, g_risk, g_contract, g_region,
+        records,
+        columns,
+        risk_styles(keys)
+    )
+
+
+@callback(
+    Output("dl-result", "data"),
+    Input("btn-dl-xlsx", "n_clicks"),
+    Input("btn-dl-csv", "n_clicks"),
+    State("m-result", "data"),
+    prevent_initial_call=True
+)
+def export_result(_xlsx, _csv, result):
+    if not result:
+        raise PreventUpdate
+
+    keys = result["keys"]
+    cols = result_columns(keys)
+    res = pd.DataFrame(result["records"])[[c for c, *_ in cols]]
+    table = res.rename(columns={c: name for c, name, _ in cols})
+    base = Path(result["filename"] or "data").stem + "_hasil_prediksi"
+
+    if ctx.triggered_id == "btn-dl-csv":
+        return dcc.send_data_frame(table.to_csv, f"{base}.csv", index=False)
+
+    summary = pd.DataFrame([
+        {
+            "Model": MODELS[k]["name"],
+            "CV ROC AUC": MODELS[k]["auc"],
+            "Prediksi churn": int((res[f"pred_{k}"] == "Churn").sum()),
+            "% churn": round((res[f"pred_{k}"] == "Churn").mean(), 4),
+            "Rata-rata prob.": round(res[f"prob_{k}"].mean(), 4),
+            **{f"Risiko {r}": int((res[f"risk_{k}"] == r).sum()) for r in RISK_ORDER}
+        }
+        for k in keys
+    ])
+
+    def write(buf):
+        with pd.ExcelWriter(buf, engine="openpyxl") as xw:
+            table.to_excel(xw, sheet_name="Hasil Prediksi", index=False)
+            summary.to_excel(xw, sheet_name="Ringkasan Model", index=False)
+
+    return dcc.send_bytes(write, f"{base}.xlsx")
+
+
+@callback(
+    Output("dl-template", "data"),
+    Input("btn-template", "n_clicks"),
+    prevent_initial_call=True
+)
+def download_template(_):
+    return dcc.send_file(str(ROOT / "data" / "new_customers.csv"))
+
+
+# ============================================================
+# 12. RUN APPLICATION
 # ============================================================
 
 if __name__ == "__main__":
     app.run(
         debug=True,
-        port=8053
+        port=8054
     )

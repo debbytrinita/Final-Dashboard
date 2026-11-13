@@ -61,6 +61,9 @@ raw = pd.read_csv(
     parse_dates=["signup_date"]
 )
 
+# Raw copy (before imputation) for the column profile
+RAW_TRAIN = raw.copy()
+
 raw["total_charges"] = raw["total_charges"].fillna(
     raw["monthly_charges"] * raw["tenure_months"]
 )
@@ -146,8 +149,110 @@ def kpi(judul, nilai, sub=""):
     )
 
 
+def kpi_plain(judul, nilai, sub=""):
+    """KPI without card, used on the Data Overview page."""
+    return html.Div([
+        html.Div(judul, style={"color": C["muted"], "fontSize": "12px"}),
+        html.Div(
+            nilai,
+            style={
+                "fontSize": "26px",
+                "fontWeight": 700,
+                "color": C["ink"],
+                "lineHeight": 1.25
+            }
+        ),
+        html.Div(sub, style={"color": C["muted"], "fontSize": "11px"})
+    ])
+
+
 def rupiah(x):
     return f"Rp{x:,.0f}".replace(",", ".")
+
+
+MONO = "Consolas, 'Courier New', monospace"
+
+GRID2 = {
+    "display": "grid",
+    # equal-width columns; stacks on narrow screens without overflowing
+    "gridTemplateColumns": "repeat(auto-fit, minmax(min(360px, 100%), 1fr))",
+    "gap": "24px"
+}
+
+STATUS_COLOR = {"Bertahan": RISK_COLOR["Rendah"], "Churn": RISK_COLOR["Tinggi"]}
+
+RAW_COLS = list(RAW_TRAIN.columns)
+
+NUM_LABEL = {
+    "tenure_months": "Tenure (bulan)",
+    "monthly_charges": "Tagihan bulanan",
+    "total_charges": "Total tagihan",
+    "num_complaints": "Jumlah keluhan",
+    "support_calls": "Panggilan CS"
+}
+
+MONO_TABLE = dict(
+    style_table={"overflowX": "auto"},
+    style_cell={
+        "fontFamily": MONO,
+        "fontSize": "12px",
+        "padding": "6px 10px",
+        "textAlign": "left",
+        "border": "1px solid #EEF1F6",
+        "whiteSpace": "nowrap"
+    },
+    style_header={
+        "fontWeight": 700,
+        "background": "#E9EDF5",
+        "color": C["ink"]
+    },
+    style_data_conditional=[
+        {"if": {"row_index": "odd"}, "backgroundColor": "#FAFBFD"}
+    ]
+)
+
+
+def block_title(t, sub=None):
+    return html.Div(
+        style={"marginBottom": "8px"},
+        children=[
+            html.Div(
+                t,
+                style={
+                    "fontSize": "15px",
+                    "fontWeight": 700,
+                    "color": C["ink"],
+                    "borderLeft": f"4px solid {C['accent']}",
+                    "paddingLeft": "8px"
+                }
+            ),
+            html.Div(
+                sub,
+                style={
+                    "fontSize": "12px",
+                    "color": C["muted"],
+                    "margin": "2px 0 0 12px"
+                }
+            ) if sub else None
+        ]
+    )
+
+
+def info_row(k, v):
+    return html.Div(
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "minmax(150px, 40%) 1fr",
+            "gap": "12px",
+            "padding": "7px 0",
+            "fontSize": "13px",
+            "borderBottom": "1px solid #EEF1F6"
+        },
+        children=[
+            html.Div(k, style={"color": C["muted"]}),
+            html.Div(v, style={"fontWeight": 600, "color": C["ink"]})
+        ]
+    )
 
 
 def num_input(id_, lab, val, mn, mx, step=1):
@@ -194,7 +299,7 @@ NAV_ITEMS = [
     ("nav-eda", "Exploratory Data Analysis", "🔍", None),
     ("nav-single", "Prediksi Single Observasi", "👤", "predict"),
     ("nav-multi", "Prediksi Multi Observasi", "🗂️", "multi"),
-    ("nav-team", "Tim Developer", "👥", None)
+    ("nav-team", "Tim Developer", "👥", "team")
 ]
 
 NAV_BASE = {
@@ -359,109 +464,114 @@ sidebar = html.Div(
 
 
 # ============================================================
-# 5. OVERVIEW TAB
+# 5. DATA OVERVIEW PAGE
 # ============================================================
 
-tab_overview = html.Div([
-    html.Div(
-        id="kpi-row",
-        style={
-            "display": "flex",
-            "gap": "12px",
-            "marginBottom": "12px"
-        }
-    ),
+tab_overview = html.Div(
+    style={**CARD, "padding": "20px 24px"},
+    children=[
+        html.H2("Data Overview", style={"margin": 0, "fontSize": "22px"}),
+        html.Div(
+            "Pertanyaan bisnis: pelanggan mana yang berisiko churn dan apa yang harus dilakukan? "
+            "· Data latihan 2023–2025 · Prediksi dari final trained model",
+            style={"color": C["muted"], "fontSize": "13px", "marginTop": "2px"}
+        ),
 
-    html.Div(
-        style={
-            "display": "grid",
-            "gridTemplateColumns": "1fr 1fr",
-            "gap": "12px"
-        },
-        children=[
-            html.Div(dcc.Graph(id="g-donut"), style=CARD),
-            html.Div(dcc.Graph(id="g-region-risk"), style=CARD),
-            html.Div(dcc.Graph(id="g-trend"), style=CARD),
-            html.Div(dcc.Graph(id="g-contract"), style=CARD),
-            html.Div(dcc.Graph(id="g-risk"), style=CARD),
-            html.Div(dcc.Graph(id="g-actual-pred"), style=CARD)
-        ]
-    ),
+        # KPI row
+        html.Div(
+            id="kpi-row",
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(auto-fit, minmax(180px, 1fr))",
+                "gap": "16px",
+                "margin": "20px 0 12px"
+            }
+        ),
 
-    html.Div(
-        style={
-            **CARD,
-            "marginTop": "12px"
-        },
-        children=[
-            html.H4(
-                id="tbl-title",
-                style={"marginTop": 0}
-            ),
+        # Donut + dataset information
+        html.Div(
+            style=GRID2,
+            children=[
+                html.Div([
+                    block_title("Komposisi status churn aktual"),
+                    dcc.Graph(
+                        id="g-status",
+                        config={"displayModeBar": False},
+                        style={"height": "300px"}
+                    )
+                ]),
+                html.Div([
+                    block_title("Informasi dataset"),
+                    html.Div(id="ds-info")
+                ])
+            ]
+        ),
 
-            dash_table.DataTable(
-                id="tbl-risk",
-                page_size=10,
-                sort_action="native",
-                filter_action="native",
-
-                columns=[
-                    {
-                        "name": name,
-                        "id": column_id,
-                        **(
-                            {
-                                "type": "numeric",
-                                "format": {"specifier": ".1%"}
+        # Column profile + descriptive statistics
+        html.Div(
+            style={**GRID2, "marginTop": "24px"},
+            children=[
+                html.Div([
+                    block_title(
+                        "Profil kolom",
+                        "Missing dihitung dari data mentah sebelum imputasi total_charges."
+                    ),
+                    dash_table.DataTable(
+                        id="tbl-profile",
+                        page_size=len(RAW_COLS),
+                        columns=[
+                            {"name": n, "id": i}
+                            for n, i in [
+                                ("Kolom", "kolom"),
+                                ("Tipe", "tipe"),
+                                ("Missing (mentah)", "missing"),
+                                ("Nilai unik", "unik"),
+                                ("Contoh", "contoh")
+                            ]
+                        ],
+                        **MONO_TABLE,
+                        style_cell_conditional=[
+                            {"if": {"column_id": c}, "textAlign": "right"}
+                            for c in ["missing", "unik"]
+                        ]
+                    )
+                ]),
+                html.Div([
+                    block_title("Statistik deskriptif variabel numerik"),
+                    dash_table.DataTable(
+                        id="tbl-stats",
+                        columns=[
+                            {"name": n, "id": i}
+                            for n, i in [
+                                ("variabel", "variabel"),
+                                ("count", "count"),
+                                ("mean", "mean"),
+                                ("std", "std"),
+                                ("min", "min"),
+                                ("25%", "q25"),
+                                ("50%", "q50"),
+                                ("75%", "q75"),
+                                ("max", "max")
+                            ]
+                        ],
+                        **{
+                            **MONO_TABLE,
+                            "style_cell": {
+                                **MONO_TABLE["style_cell"],
+                                "padding": "6px 8px"
                             }
-                            if column_id == "churn_probability"
-                            else {}
-                        )
-                    }
-                    for name, column_id in [
-                        ("ID", "customer_id"),
-                        ("Region", "region"),
-                        ("Segmen", "segment"),
-                        ("Kontrak", "contract_type"),
-                        ("Tenure", "tenure_months"),
-                        ("Keluhan", "num_complaints"),
-                        ("Prob. churn", "churn_probability"),
-                        ("Risiko", "risk_category")
-                    ]
-                ],
-
-                style_cell={
-                    "padding": "6px",
-                    "fontSize": "13px",
-                    "textAlign": "left"
-                },
-
-                style_header={
-                    "fontWeight": "bold",
-                    "background": "#E9EDF5"
-                },
-
-                style_data_conditional=[
-                    {
-                        "if": {
-                            "filter_query": "{risk_category} = 'Tinggi'",
-                            "column_id": "risk_category"
                         },
-                        "color": "white",
-                        "backgroundColor": RISK_COLOR["Tinggi"]
-                    },
-                    {
-                        "if": {
-                            "filter_query": "{risk_category} = 'Sedang'",
-                            "column_id": "risk_category"
-                        },
-                        "backgroundColor": "#FBE3D3"
-                    }
-                ]
-            )
-        ]
-    )
-])
+                        style_cell_conditional=[
+                            {"if": {"column_id": c}, "textAlign": "right"}
+                            for c in ["count", "mean", "std", "min",
+                                      "q25", "q50", "q75", "max"]
+                        ]
+                    )
+                ])
+            ]
+        )
+    ]
+)
 
 
 # ============================================================
@@ -738,13 +848,92 @@ tab_multi = html.Div([
 
 
 # ============================================================
+# 6c. TEAM PAGE
+# ============================================================
+
+TEAM = [
+    "Debby Trinita",
+    "Jessica Saputra",
+    "Nitriko Puji Raharjo",
+    "Darren Davarel"
+]
+
+
+def member_card(no, name):
+    initials = "".join(w[0] for w in name.split()[:2]).upper()
+    return html.Div(
+        style={
+            **CARD,
+            "border": "1px solid #EEF1F6",
+            "boxShadow": "none",
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "textAlign": "center",
+            "padding": "24px 16px"
+        },
+        children=[
+            html.Div(
+                initials,
+                style={
+                    "width": "72px",
+                    "height": "72px",
+                    "borderRadius": "50%",
+                    "background": C["accent"],
+                    "color": "white",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "fontSize": "24px",
+                    "fontWeight": 700,
+                    "marginBottom": "12px"
+                }
+            ),
+            html.Div(
+                name,
+                style={"fontSize": "15px", "fontWeight": 700, "color": C["ink"]}
+            ),
+            html.Div(
+                f"Anggota {no}",
+                style={"fontSize": "12px", "color": C["muted"], "marginTop": "2px"}
+            )
+        ]
+    )
+
+
+tab_team = html.Div(
+    style={**CARD, "padding": "20px 24px"},
+    children=[
+        html.H2("Tim Developer", style={"margin": 0, "fontSize": "22px"}),
+        html.Div(
+            "Tim pengembang Customer Churn Intelligence Dashboard.",
+            style={"color": C["muted"], "fontSize": "13px", "marginTop": "2px"}
+        ),
+        html.Div(
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(auto-fit, minmax(min(200px, 100%), 1fr))",
+                "gap": "16px",
+                "marginTop": "20px"
+            },
+            children=[
+                member_card(i, name)
+                for i, name in enumerate(TEAM, start=1)
+            ]
+        )
+    ]
+)
+
+
+# ============================================================
 # 7. MAIN DASHBOARD LAYOUT
 # ============================================================
 
 PAGES = {
     "overview": tab_overview,
     "predict": tab_predict,
-    "multi": tab_multi
+    "multi": tab_multi,
+    "team": tab_team
 }
 
 app = Dash(
@@ -766,12 +955,7 @@ app.layout = html.Div(
         dcc.Store(id="sb-open", data=True),
 
         html.Div(
-            style={
-                "display": "flex",
-                "alignItems": "center",
-                "gap": "12px",
-                "marginBottom": "12px"
-            },
+            style={"marginBottom": "0"},
             children=[
                 html.Button(
                     "☰",
@@ -779,20 +963,7 @@ app.layout = html.Div(
                     n_clicks=0,
                     title="Buka sidebar",
                     style={"display": "none"}
-                ),
-
-                html.Div([
-                    html.H2(
-                        "Customer Churn Intelligence Dashboard",
-                        style={"margin": 0}
-                    ),
-
-                    html.Div(
-                        "Pertanyaan bisnis: pelanggan mana yang berisiko churn dan apa yang harus dilakukan? "
-                        "· Data latihan 2023–2025 · Prediksi dari final trained model",
-                        style={"color": C["muted"]}
-                    )
-                ])
+                )
             ]
         ),
 
@@ -829,6 +1000,7 @@ app.layout = html.Div(
 # ============================================================
 
 NAV_TARGET = {id_: tab for id_, _, _, tab in NAV_ITEMS}
+
 
 
 @callback(
@@ -869,7 +1041,8 @@ SB_SHOW_BTN = {
     "fontSize": "20px",
     "cursor": "pointer",
     "flexShrink": 0,
-    "boxShadow": "0 1px 3px rgba(0,0,0,.2)"
+    "boxShadow": "0 1px 3px rgba(0,0,0,.2)",
+    "marginBottom": "12px"
 }
 
 
@@ -926,272 +1099,147 @@ FILTERS = [
 
 
 # ============================================================
-# 9. CALLBACK 1: UPDATE OVERVIEW DASHBOARD
+# 9. CALLBACK 1: UPDATE DATA OVERVIEW
 # ============================================================
 
 @callback(
     Output("kpi-row", "children"),
-    Output("g-donut", "figure"),
-    Output("g-region-risk", "figure"),
-    Output("g-trend", "figure"),
-    Output("g-contract", "figure"),
-    Output("g-risk", "figure"),
-    Output("g-actual-pred", "figure"),
-    Output("tbl-risk", "data"),
-    Output("tbl-title", "children"),
+    Output("g-status", "figure"),
+    Output("ds-info", "children"),
+    Output("tbl-profile", "data"),
+    Output("tbl-stats", "data"),
     *FILTERS
 )
-
 def update_overview(region, segment, kontrak, risk, tenure):
 
     d = apply_filters(region, segment, kontrak, risk, tenure)
+    raw_f = RAW_TRAIN.loc[d.index]  # same rows, before imputation
+    n = len(d)
+    total = f"{len(DF):,}".replace(",", ".")
 
-    if d.empty:
-
-        f = px.scatter(
-            title="Tidak ada data — longgarkan filter",
-            template="plotly_white"
+    if n == 0:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Tidak ada data — longgarkan filter",
+            showarrow=False
         )
-
+        fig.update_layout(
+            xaxis_visible=False,
+            yaxis_visible=False,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)"
+        )
         return (
-            [kpi("Pelanggan", "0")],
-            f, f, f, f, f, f,
+            [kpi_plain("Pelanggan", "0", f"dari {total} total")],
+            fig,
+            [info_row("Jumlah baris (sesuai filter)", "0")],
             [],
-            "Tidak ada data"
+            []
         )
 
     # KPI
-    tinggi = (d["risk_category"] == "Tinggi").sum()
-
+    n_churn = int(d["churn"].sum())
+    pendapatan = d["monthly_charges"].sum()
     kpis = [
-        kpi("Pelanggan", f"{len(d):,}", "sesuai filter"),
-
-        kpi(
-            "Churn rate aktual",
-            f"{d['churn'].mean():.1%}",
-            f"total: {DF['churn'].mean():.1%}"
+        kpi_plain("Pelanggan", f"{n:,}", f"dari {total} total"),
+        kpi_plain("Churn aktual", f"{n_churn:,}", f"churn rate {d['churn'].mean():.1%}"),
+        kpi_plain(
+            "Rata-rata tenure",
+            f"{d['tenure_months'].mean():.1f} bln",
+            f"median {d['tenure_months'].median():.0f} bln"
         ),
-
-        kpi(
-            "Rata-rata prob. churn",
-            f"{d['churn_probability'].mean():.1%}",
-            "prediksi model"
-        ),
-
-        kpi(
-            "Risiko tinggi",
-            f"{tinggi:,}",
-            rupiah(
-                d.loc[
-                    d["risk_category"] == "Tinggi",
-                    "monthly_charges"
-                ].sum()
-            ) + "/bln berisiko"
+        kpi_plain(
+            "Pendapatan bulanan",
+            rupiah(pendapatan),
+            f"rata-rata {rupiah(pendapatan / n)}/pelanggan"
         )
     ]
 
-    # Chart 1: Risk composition
-    g0 = px.pie(
-        d,
-        names="risk_category",
+    # Donut: actual churn status
+    counts = d["status"].value_counts().reindex(["Bertahan", "Churn"], fill_value=0)
+    fig = go.Figure(go.Pie(
+        labels=list(counts.index),
+        values=list(counts.values),
         hole=0.55,
-        color="risk_category",
-        color_discrete_map=RISK_COLOR,
-        category_orders={"risk_category": RISK_ORDER},
-        title="Komposisi kategori risiko"
-    )
-
-    g0.update_traces(
-        textinfo="percent+label",
-        sort=False
-    )
-
-    g0.add_annotation(
-        text=f"<b>{len(d):,}</b><br>pelanggan",
-        showarrow=False,
-        font_size=14
-    )
-
-    g0.update_layout(showlegend=False)
-
-    # Chart 2: High-risk customers by region
-    rr = (
-        d.assign(
-            tinggi=d["risk_category"].eq("Tinggi")
-        )
-        .groupby("region", as_index=False)["tinggi"]
-        .mean()
-        .sort_values("tinggi")
-    )
-
-    g5 = px.bar(
-        rr,
-        x="tinggi",
-        y="region",
-        orientation="h",
-        text_auto=".1%",
-        template="plotly_white",
-        color_discrete_sequence=[RISK_COLOR["Tinggi"]],
-        title="Porsi pelanggan risiko tinggi per region",
-        labels={
-            "tinggi": "Porsi risiko tinggi",
-            "region": ""
-        }
-    )
-
-    g5.update_xaxes(tickformat=".0%")
-
-    # Chart 3: Churn trend
-    tr = (
-        d.groupby("periode")
-        .agg(
-            aktual=("churn", "mean"),
-            prediksi=("churn_probability", "mean")
-        )
-        .reset_index()
-    )
-
-    g1 = px.line(
-        tr.melt(
-            "periode",
-            var_name="seri",
-            value_name="rate"
+        sort=False,
+        direction="clockwise",
+        marker=dict(
+            colors=[STATUS_COLOR[s] for s in counts.index],
+            line=dict(color="white", width=2)
         ),
-        x="periode",
-        y="rate",
-        color="seri",
-        markers=True,
-        template="plotly_white",
-        title="Churn aktual vs rata-rata prediksi per kuartal pendaftaran",
-        labels={
-            "periode": "Kuartal pendaftaran",
-            "rate": "Rate",
-            "seri": ""
+        textinfo="label+percent",
+        textposition="inside",
+        insidetextorientation="radial",
+        textfont=dict(color="white", size=12)
+    ))
+    fig.add_annotation(
+        text=f"<b>{n:,}</b><br>pelanggan",
+        showarrow=False,
+        font=dict(size=15, color=C["ink"])
+    )
+    fig.update_layout(
+        showlegend=False,
+        height=300,
+        margin=dict(t=10, b=10, l=10, r=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, Arial, sans-serif")
+    )
+
+    # Dataset information
+    num = META["numeric_features"]
+    cat = META["categorical_features"]
+    info = [
+        info_row("Jumlah baris (sesuai filter)", f"{n:,}"),
+        info_row("Jumlah kolom", f"{len(RAW_COLS)}"),
+        info_row("Variabel numerik", ", ".join(num)),
+        info_row("Variabel kategorik", ", ".join(cat)),
+        info_row("Variabel target", "churn (0 = Bertahan, 1 = Churn)"),
+        info_row(
+            "Periode pendaftaran",
+            f"{d['signup_date'].min():%d %b %Y} – {d['signup_date'].max():%d %b %Y}"
+        ),
+        info_row("Total missing value (mentah)", f"{int(raw_f.isna().sum().sum())} sel"),
+        info_row("Baris duplikat", f"{int(raw_f.duplicated().sum())}")
+    ]
+
+    # Column profile (raw data, before imputation)
+    profile = []
+    for c in RAW_COLS:
+        s = raw_f[c]
+        contoh = s.dropna().iloc[0] if s.notna().any() else "-"
+        if isinstance(contoh, pd.Timestamp):
+            contoh = contoh.strftime("%Y-%m-%d")
+        profile.append({
+            "kolom": c,
+            "tipe": str(s.dtype),
+            "missing": int(s.isna().sum()),
+            "unik": int(s.nunique()),
+            "contoh": str(contoh)
+        })
+
+    # Descriptive statistics of numeric variables
+    desc = d[num].describe().T.round(2)
+    stats = [
+        {
+            "variabel": NUM_LABEL.get(c, c),
+            "count": int(r["count"]),
+            **{
+                # large values without decimals so the table fits its column
+                key: (
+                    int(round(r[col])) if abs(r[col]) >= 1000
+                    else round(float(r[col]), 2)
+                )
+                for key, col in [
+                    ("mean", "mean"), ("std", "std"), ("min", "min"),
+                    ("q25", "25%"), ("q50", "50%"), ("q75", "75%"),
+                    ("max", "max")
+                ]
+            }
         }
-    )
+        for c, r in desc.iterrows()
+    ]
 
-    g1.update_yaxes(tickformat=".0%")
-
-    # Chart 4: Contract type and risk
-    ck = (
-        d.groupby(["contract_type", "risk_category"])
-        .size()
-        .reset_index(name="n")
-    )
-
-    g2 = px.bar(
-        ck,
-        x="contract_type",
-        y="n",
-        color="risk_category",
-        color_discrete_map=RISK_COLOR,
-        category_orders={
-            "risk_category": RISK_ORDER,
-            "contract_type": [
-                "Bulanan",
-                "Tahunan",
-                "Dua Tahun"
-            ]
-        },
-        template="plotly_white",
-        title="Komposisi risiko per jenis kontrak",
-        labels={
-            "contract_type": "",
-            "n": "Pelanggan",
-            "risk_category": "Risiko"
-        }
-    )
-
-    # Chart 5: Churn probability distribution
-    g3 = px.histogram(
-        d,
-        x="churn_probability",
-        nbins=30,
-        color="risk_category",
-        color_discrete_map=RISK_COLOR,
-        category_orders={"risk_category": RISK_ORDER},
-        template="plotly_white",
-        title="Distribusi probabilitas churn (prediksi)",
-        labels={
-            "churn_probability": "Probabilitas churn",
-            "risk_category": "Risiko"
-        }
-    )
-
-    g3.add_vline(
-        x=META["decision_threshold"],
-        line_dash="dash",
-        annotation_text="threshold"
-    )
-
-    # Chart 6: Actual vs predicted churn by region
-    rg = (
-        d.groupby("region")
-        .agg(
-            aktual=("churn", "mean"),
-            prediksi=("churn_probability", "mean"),
-            n=("customer_id", "count")
-        )
-        .reset_index()
-    )
-
-    g4 = px.scatter(
-        rg,
-        x="aktual",
-        y="prediksi",
-        size="n",
-        text="region",
-        template="plotly_white",
-        title="Region: churn aktual vs prediksi (ukuran = jumlah pelanggan)",
-        labels={
-            "aktual": "Churn rate aktual",
-            "prediksi": "Rata-rata prediksi"
-        }
-    )
-
-    g4.update_traces(
-        textposition="top center",
-        cliponaxis=False
-    )
-
-    pad = 0.03
-
-    g4.update_xaxes(
-        tickformat=".0%",
-        range=[
-            rg["aktual"].min() - pad,
-            rg["aktual"].max() + pad
-        ]
-    )
-
-    g4.update_yaxes(
-        tickformat=".0%",
-        range=[
-            rg["prediksi"].min() - pad,
-            rg["prediksi"].max() + pad
-        ]
-    )
-
-    # Risk priority table
-    top = (
-        d.sort_values(
-            "churn_probability",
-            ascending=False
-        )
-        .head(200)
-    )
-
-    return (
-        kpis,
-        g0,
-        g5,
-        g1,
-        g2,
-        g3,
-        g4,
-        top.to_dict("records"),
-        f"Prioritas retensi — {min(len(d), 200)} pelanggan dengan probabilitas tertinggi"
-    )
+    return kpis, fig, info, profile, stats
 
 
 # ============================================================
